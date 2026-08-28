@@ -533,7 +533,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   }
 
   var DB = dataAwal();
-  var UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', pesan: '' };
+  var UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: '' };
 
   var uid = function (p) { DB.seq += 1; return p + DB.seq; };
   var vendorOf = function (id) { return DB.vendors.filter(function (v) { return v.id === id; })[0] || null; };
@@ -858,11 +858,69 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       (hint ? '<small class="' + (warn ? 'warn' : '') + '">' + esc(hint) + '</small>' : '') + '</label>';
   }
 
+  // -------------------------------------------------------------------------
+  // Form vendor — dipakai untuk MEMBUAT vendor baru maupun MELENGKAPI yang
+  // datanya kurang. Tanpa ini pagar "vendor harus lengkap" jadi jalan buntu:
+  // kelihatan apa yang kurang, tapi tidak ada cara membereskannya.
+  // -------------------------------------------------------------------------
+  var BENTUK = [['pt', 'PT'], ['cv', 'CV'], ['pribadi', 'Pribadi'], ['toko', 'Toko'], ['lainnya', 'Lainnya']];
+  var KATEGORI_VENDOR = ['Renovasi', 'Sipil', 'Interior', 'Listrik', 'AC', 'CCTV', 'Rak & Mebel', 'Notaris', 'Logistik', 'Supplier Barang', 'Lainnya'];
+
+  var WAJIB_VENDOR = [
+    ['name', 'Nama vendor', 'CV Contoh Sejahtera'],
+    ['contact_name', 'PIC vendor', 'Nama orang yang dihubungi'],
+    ['phone', 'No. HP / WA', '08xxxxxxxxxx'],
+    ['npwp', 'NPWP / NIK', 'NPWP badan, NPWP pribadi, atau NIK 16 digit'],
+    ['bank_name', 'Bank', 'BCA / Mandiri / BRI'],
+    ['bank_account_number', 'No. rekening', 'Angka saja'],
+    ['bank_account_name', 'Nama rekening (a.n.)', 'Harus sama dengan nama vendor']
+  ];
+
+  function vendorKosong() {
+    return { id: '', name: '', legal_type: 'cv', category: 'Renovasi', contact_name: '', phone: '', npwp: '', address: '', bank_name: '', bank_account_number: '', bank_account_name: '', status: 'active' };
+  }
+
+  function formVendorHTML() {
+    var f = UI.vform;
+    var d = f.d;
+    var kurang = kurangVendor(d);
+    var bedaNama = d.bank_account_name && d.name &&
+      d.bank_account_name.toLowerCase().replace(/\b(pt|cv|ud|toko)\b\.?/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim() !==
+      d.name.toLowerCase().replace(/\b(pt|cv|ud|toko)\b\.?/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+
+    var isian = WAJIB_VENDOR.map(function (w) {
+      var kosong = String(d[w[0]] || '').trim() === '';
+      return '<label class="fld"><span>' + esc(w[1]) + '</span>' +
+        '<input data-vf="' + w[0] + '" value="' + esc(d[w[0]] || '') + '" placeholder="' + esc(w[2]) + '"' + (kosong ? ' class="need"' : '') + '>' +
+        '<small class="' + (kosong ? 'warn' : '') + '">' + (kosong ? 'Wajib' : 'Terisi') + '</small></label>';
+    }).join('');
+
+    return '<div style="margin-top:12px;border:1px solid var(--s200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:12px">' +
+      '<div style="font-size:13px;font-weight:600">' + (f.mode === 'baru' ? 'Vendor baru — lengkapi sekali' : 'Lengkapi data: ' + esc(d.name || '(tanpa nama)')) + '</div>' +
+      '<div class="fields">' + isian +
+      '<label class="fld"><span>Bentuk badan usaha</span><select data-vf="legal_type">' +
+      BENTUK.map(function (b) { return '<option value="' + b[0] + '"' + (b[0] === d.legal_type ? ' selected' : '') + '>' + b[1] + '</option>'; }).join('') +
+      '</select><small>PT &amp; CV pakai NPWP badan. Pribadi &amp; toko boleh NIK.</small></label>' +
+      '<label class="fld"><span>Kategori</span><select data-vf="category">' +
+      KATEGORI_VENDOR.map(function (k) { return '<option' + (k === d.category ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') +
+      '</select></label>' +
+      '<label class="fld"><span>Alamat</span><input data-vf="address" value="' + esc(d.address || '') + '" placeholder="Opsional"><small>Opsional</small></label>' +
+      '</div>' +
+      (bedaNama ? '<div class="note amb">Nama rekening berbeda dari nama vendor. Boleh saja — tapi pastikan memang begitu, karena rekening inilah yang tercetak di berita acara.</div>' : '') +
+      (kurang.length
+        ? '<div class="note amb">Belum bisa dipakai. Masih kosong: <b>' + esc(kurang.map(function (g) { return g.label; }).join(', ')) + '</b>.</div>'
+        : '<div class="note em">Lengkap — begitu disimpan, vendor ini langsung bisa dipilih.</div>') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn pri" data-vsimpan="1"' + (kurang.length ? ' disabled' : '') + '>Simpan ke Master Vendor</button>' +
+      '<button class="btn" data-vbatal="1">Batal</button></div></div>';
+  }
+
   function blokVendor(d, v, kunci) {
     var kurang = v ? kurangVendor(v) : [];
     var pk = v ? paktaAktif(v.id) : null;
     var picker = '';
-    if (UI.pickerOpen && !kunci) {
+    if (UI.vform && !kunci) { picker = formVendorHTML(); }
+    else if (UI.pickerOpen && !kunci) {
       var q = UI.pickerQ.trim().toLowerCase();
       var list = DB.vendors.filter(function (x) {
         return !q || (x.name + ' ' + x.category + ' ' + x.contact_name).toLowerCase().indexOf(q) >= 0;
@@ -878,8 +936,9 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
             '<div class="h"><span class="nm">' + esc(x.name) + '</span>' + lencana + '</div>' +
             '<div class="mt">' + esc([String(x.legal_type || '').toUpperCase(), x.category, x.contact_name].filter(Boolean).join(' · ')) + '</div>' +
             '<div class="ac"><button class="btn xs pri" data-pick="' + x.id + '"' + (boleh ? '' : ' disabled') + '>Pilih</button>' +
-            (boleh ? '' : '<button class="btn xs" data-lengkapi="' + x.id + '">Lengkapi data</button>') + '</div></div>';
+            (boleh ? '' : '<button class="btn xs" data-vedit="' + x.id + '">Lengkapi data</button>') + '</div></div>';
         }).join('') + '</div>' +
+        '<button class="btn sm" data-vbaru="1" style="align-self:flex-start">+ Vendor baru</button>' +
         '<div style="font-size:11.5px;color:var(--amber700)">NPWP atau NIK wajib untuk semua vendor — pekerjaan jasa dipotong PPh, dan bukti potong harus menyebut nomor pajak penerima.</div></div>';
     }
 
@@ -912,19 +971,25 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
 
     var isi = '';
     if (UI.step === 0) {
-      var q = UI.pickerQ.trim().toLowerCase();
-      var list = DB.vendors.filter(function (x) { return !q || (x.name + ' ' + x.category).toLowerCase().indexOf(q) >= 0; });
-      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:10px">' +
-        '<div style="font-size:14px;color:var(--s500)">Pakta melekat pada vendor, bukan pada proyek. Sekali ditandatangani, berlaku 12 bulan.</div>' +
-        '<input id="pickerQ" placeholder="Cari nama vendor" value="' + esc(UI.pickerQ) + '" style="border:1px solid var(--s200);border-radius:6px;padding:8px 12px">' +
-        '<div class="vlist">' + list.map(function (x) {
-          var boleh = vendorBolehDipilih(x), g = kurangVendor(x);
-          var lencana = x.status === 'inactive' ? '<span class="pill off">Nonaktif</span>' : boleh ? '<span class="pill active">Lengkap</span>' : '<span class="pill issued">' + esc(g[0].label) + ' kosong</span>';
-          return '<div class="vrow' + (boleh ? '' : ' off') + (x.id === p.vendor_id ? ' sel' : '') + '">' +
-            '<div class="h"><span class="nm">' + esc(x.name) + '</span>' + lencana + '</div>' +
-            '<div class="mt">' + esc([String(x.legal_type || '').toUpperCase(), x.category].filter(Boolean).join(' · ')) + '</div>' +
-            (kunci ? '' : '<div class="ac"><button class="btn xs pri" data-pickp="' + x.id + '"' + (boleh ? '' : ' disabled') + '>Pilih</button></div>') + '</div>';
-        }).join('') + '</div></div>';
+      if (UI.vform && !kunci) {
+        isi = '<div class="card pad">' + formVendorHTML() + '</div>';
+      } else {
+        var q = UI.pickerQ.trim().toLowerCase();
+        var list = DB.vendors.filter(function (x) { return !q || (x.name + ' ' + x.category).toLowerCase().indexOf(q) >= 0; });
+        isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:10px">' +
+          '<div style="font-size:14px;color:var(--s500)">Pakta melekat pada vendor, bukan pada proyek. Sekali ditandatangani, berlaku 12 bulan.</div>' +
+          '<input id="pickerQ" placeholder="Cari nama vendor" value="' + esc(UI.pickerQ) + '" style="border:1px solid var(--s200);border-radius:6px;padding:8px 12px">' +
+          '<div class="vlist">' + list.map(function (x) {
+            var boleh = vendorBolehDipilih(x), g = kurangVendor(x);
+            var lencana = x.status === 'inactive' ? '<span class="pill off">Nonaktif</span>' : boleh ? '<span class="pill active">Lengkap</span>' : '<span class="pill issued">' + esc(g[0].label) + ' kosong</span>';
+            return '<div class="vrow' + (boleh ? '' : ' off') + (x.id === p.vendor_id ? ' sel' : '') + '">' +
+              '<div class="h"><span class="nm">' + esc(x.name) + '</span>' + lencana + '</div>' +
+              '<div class="mt">' + esc([String(x.legal_type || '').toUpperCase(), x.category].filter(Boolean).join(' · ')) + '</div>' +
+              (kunci ? '' : '<div class="ac"><button class="btn xs pri" data-pickp="' + x.id + '"' + (boleh ? '' : ' disabled') + '>Pilih</button>' +
+                (boleh ? '' : '<button class="btn xs" data-vedit="' + x.id + '">Lengkapi data</button>') + '</div>') + '</div>';
+          }).join('') + '</div>' +
+          (kunci ? '' : '<button class="btn sm" data-vbaru="1" style="align-self:flex-start">+ Vendor baru</button>') + '</div>';
+      }
     }
 
     if (UI.step === 1) {
@@ -1141,7 +1206,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
 
   document.getElementById('btnReset').addEventListener('click', function () {
     DB = dataAwal();
-    UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', pesan: 'Simulasi dikembalikan seperti semula.' };
+    UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: 'Simulasi dikembalikan seperti semula.' };
     gambarNav();
     gambar();
     window.scrollTo(0, 0);
@@ -1153,8 +1218,8 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     var d = UI.view === 'edit' || UI.view === 'cetak' ? docOf(UI.id) : null;
     var p = UI.view === 'pakta' || UI.view === 'cetakp' ? paktaOf(UI.id) : null;
 
-    if (t.dataset.go === 'list') { UI.view = 'list'; UI.id = null; UI.pickerOpen = false; gambar(); window.scrollTo(0, 0); return; }
-    if (t.dataset.open) { UI.view = 'edit'; UI.id = t.dataset.open; UI.step = 0; UI.pickerOpen = false; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.go === 'list') { UI.view = 'list'; UI.id = null; UI.pickerOpen = false; UI.vform = null; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.open) { UI.view = 'edit'; UI.id = t.dataset.open; UI.step = 0; UI.pickerOpen = false; UI.vform = null; gambar(); window.scrollTo(0, 0); return; }
     if (t.dataset.pakta) { UI.view = 'pakta'; UI.id = t.dataset.pakta; UI.step = 0; UI.pickerQ = ''; gambar(); window.scrollTo(0, 0); return; }
     if (t.dataset.cetak) { UI.view = 'cetak'; UI.id = t.dataset.cetak; gambar(); window.scrollTo(0, 0); return; }
     if (t.dataset.cetakp) { UI.view = 'cetakp'; UI.id = t.dataset.cetakp; gambar(); window.scrollTo(0, 0); return; }
@@ -1181,8 +1246,38 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       gambar(); return;
     }
 
-    if (t.dataset.picker) { UI.pickerOpen = !UI.pickerOpen; UI.pickerQ = ''; gambar(); return; }
-    if (t.dataset.lengkapi) { UI.pesan = 'Di aplikasi sungguhan, tombol ini membuka Master Vendor. Di simulasi, vendor sengaja dibiarkan kurang supaya pagarnya terlihat.'; gambar(); return; }
+    if (t.dataset.picker) { UI.pickerOpen = !UI.pickerOpen; UI.pickerQ = ''; UI.vform = null; gambar(); return; }
+
+    // ---- form vendor: buat baru / lengkapi yang kurang ----
+    if (t.dataset.vbaru) { UI.vform = { mode: 'baru', id: '', d: vendorKosong() }; gambar(); return; }
+    if (t.dataset.vedit) {
+      var asli = vendorOf(t.dataset.vedit);
+      if (asli) UI.vform = { mode: 'edit', id: asli.id, d: JSON.parse(JSON.stringify(asli)) };
+      gambar(); return;
+    }
+    if (t.dataset.vbatal) { UI.vform = null; gambar(); return; }
+    if (t.dataset.vsimpan) {
+      var f = UI.vform;
+      if (!f) return;
+      var sisa = kurangVendor(f.d);
+      if (sisa.length) { UI.pesan = 'Masih kosong: ' + sisa.map(function (g) { return g.label; }).join(', ') + '.'; gambar(); return; }
+      if (f.mode === 'baru') {
+        f.d.id = uid('v');
+        f.d.status = 'active';
+        DB.vendors.push(f.d);
+        UI.pesan = 'Vendor "' + f.d.name + '" tersimpan ke Master Vendor dan sekarang bisa dipilih.';
+      } else {
+        var idx = DB.vendors.findIndex(function (x) { return x.id === f.id; });
+        // Vendor yang dilengkapi juga diaktifkan kembali — kalau tidak, ia tetap
+        // tak bisa dipilih walau datanya sudah beres, dan itu terlihat seperti bug.
+        f.d.status = 'active';
+        DB.vendors[idx] = f.d;
+        UI.pesan = 'Data "' + f.d.name + '" dilengkapi. Sekarang bisa dipilih.';
+      }
+      UI.vform = null;
+      UI.pickerOpen = true;
+      gambar(); return;
+    }
 
     if (t.dataset.pick && d) {
       var vv = vendorOf(t.dataset.pick);
@@ -1248,6 +1343,17 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
 
     if (el.id === 'cari') { UI.q = el.value; var pos = el.selectionStart; gambar(); var n = document.getElementById('cari'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } return; }
     if (el.id === 'pickerQ') { UI.pickerQ = el.value; var pos2 = el.selectionStart; gambar(); var n2 = document.getElementById('pickerQ'); if (n2) { n2.focus(); n2.setSelectionRange(pos2, pos2); } return; }
+
+    if (el.dataset.vf && UI.vform) {
+      UI.vform.d[el.dataset.vf] = el.value;
+      var pos = el.selectionStart;
+      var kunciEl = el.dataset.vf;
+      gambar();
+      var lagi = document.querySelector('[data-vf="' + kunciEl + '"]');
+      if (lagi && lagi.setSelectionRange) { lagi.focus(); try { lagi.setSelectionRange(pos, pos); } catch (e) {} }
+      else if (lagi) { lagi.focus(); }
+      return;
+    }
 
     if (el.dataset.f && d) {
       var k = el.dataset.f;
