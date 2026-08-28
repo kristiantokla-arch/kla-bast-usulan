@@ -1,0 +1,1302 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KLA BAST Simulasi</title>
+
+<style>
+  /* Warna & komponen mengikuti aplikasi yang sudah jalan:
+     components/dashboard-shell.tsx, app/globals.css, tailwind.config.ts.
+     Aplikasi aslinya terang saja, jadi simulasi ini juga terang —
+     semua warna dicat eksplisit supaya tidak meminjam latar peramban. */
+  :root {
+    --ground: #F7F7F8; --white: #FFFFFF;
+    --s950: #020617; --s900: #0F172A; --s700: #334155; --s600: #475569;
+    --s500: #64748B; --s400: #94A3B8; --s300: #CBD5E1; --s200: #E2E8F0;
+    --s100: #F1F5F9; --s50: #F8FAFC;
+    --rose700: #BE123C; --rose600: #E11D48; --rose500: #F43F5E; --rose50: #FFF1F2;
+    --fuchsia: #D946EF;
+    --amber700: #B45309; --amber300: #FCD34D; --amber200: #FDE68A; --amber50: #FFFBEB;
+    --emer700: #047857; --emer600: #059669; --emer200: #A7F3D0; --emer50: #ECFDF5;
+    --klaUngu: #471969; --klaKuning: #FFC509;
+    --soft: 0 8px 24px rgba(15,23,42,.06);
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--ground); color: var(--s950);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased;
+  }
+
+  button, input, select { font-family: inherit; font-size: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--rose700); }
+
+  .shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; align-items: start; }
+  .shell.tutup { grid-template-columns: 0 1fr; }
+  @media (max-width: 900px) { .shell, .shell.tutup { grid-template-columns: 1fr; } }
+
+  /* ---------- sidebar ---------- */
+  .side { background: var(--white); border-right: 1px solid var(--s200); position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .shell.tutup .side { display: none; }
+  @media (max-width: 900px) { .side { display: none; } .shell.buka .side { display: flex; position: fixed; z-index: 40; width: 260px; box-shadow: 0 20px 50px rgba(15,23,42,.25); } }
+
+  .side-top { border-bottom: 1px solid var(--s200); padding: 16px 20px; }
+  .side-logo { width: 128px; height: 47px; display: block; }
+  .ws { margin-top: 16px; border-left: 2px solid var(--rose500); padding-left: 12px; }
+  .ws b { display: block; font-size: 14px; font-weight: 600; color: var(--s900); }
+  .ws span { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--s400); }
+
+  .nav { padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+  .grp { border-top: 1px solid var(--s100); padding-top: 6px; }
+  .grp:first-child { border-top: none; padding-top: 0; }
+  .grp-h { display: flex; align-items: center; gap: 8px; border-radius: 8px; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--s500); }
+  .grp-h.on { background: var(--rose50); color: var(--rose700); }
+  .gi { height: 28px; width: 28px; border-radius: 6px; background: var(--s100); color: var(--s500); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .grp-h.on .gi { background: var(--rose600); color: var(--white); }
+  .grp-i { margin-top: 4px; padding-left: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-i { display: flex; align-items: center; gap: 10px; border: none; background: none; width: 100%; text-align: left; border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; color: var(--s500); }
+  .nav-i .dot { height: 6px; width: 6px; border-radius: 999px; background: var(--s300); flex: none; }
+  .nav-i.on { background: var(--rose50); color: var(--rose700); }
+  .nav-i.on .dot { background: var(--rose600); }
+  .nav-i:hover:not(.on) { background: var(--s50); color: var(--s900); }
+  .tag { margin-left: auto; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--rose600); color: var(--white); border-radius: 3px; padding: 1px 5px; }
+
+  /* ---------- topbar ---------- */
+  .main { min-width: 0; }
+  .top { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); border-bottom: 1px solid var(--s200); }
+  .top .stripe { height: 2px; background: linear-gradient(to right, var(--rose500), var(--fuchsia), #FB7185); }
+  .top .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 20px; }
+  .top .kiri { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .top b { display: block; font-size: 14px; font-weight: 600; }
+  .top small { display: block; font-size: 12px; color: var(--s500); }
+
+  .btn { border-radius: 6px; padding: 8px 14px; font-size: 14px; font-weight: 500; border: 1px solid var(--s200); background: var(--white); color: var(--s700); white-space: nowrap; }
+  .btn:hover { background: var(--s50); }
+  .btn.pri { background: var(--rose600); border-color: var(--rose600); color: var(--white); font-weight: 600; }
+  .btn.pri:hover { background: var(--rose700); }
+  .btn.sm { padding: 6px 11px; font-size: 13px; }
+  .btn.xs { padding: 4px 9px; font-size: 12px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.ic { padding: 7px 9px; }
+
+  .view { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  @media (min-width: 700px) { .view { padding: 24px; } }
+
+  /* ---------- umum ---------- */
+  .banner { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--amber200); background: var(--amber50); color: var(--amber700); border-radius: 8px; padding: 11px 14px; font-size: 13.5px; }
+  .banner b { font-weight: 600; }
+
+  .ph { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--s200); padding-bottom: 14px; }
+  .ph .k { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--rose600); }
+  .ph h1 { margin: 4px 0 0; font-size: 23px; font-weight: 600; letter-spacing: -.02em; }
+  .ph p { margin: 4px 0 0; font-size: 14px; color: var(--s500); max-width: 62ch; }
+  .ph .aksi { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .stats { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 780px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { border: 1px solid var(--s200); border-radius: 12px; background: var(--white); padding: 14px 16px; }
+  .stat span { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--s400); }
+  .stat b { display: block; margin-top: 4px; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat.warn { border-color: var(--amber200); background: var(--amber50); }
+  .stat.warn span { color: rgba(180,83,9,.85); }
+  .stat.warn b { color: var(--amber700); }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip { border: 1px solid var(--s200); background: var(--white); border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--s600); }
+  .chip.on { background: var(--s950); border-color: var(--s950); color: var(--white); font-weight: 500; }
+  .cari { margin-left: auto; min-width: 200px; flex: 1 1 200px; max-width: 300px; border: 1px solid var(--s200); border-radius: 6px; padding: 8px 12px; }
+
+  .card { border: 1px solid var(--s200); border-radius: 8px; background: var(--white); box-shadow: var(--soft); }
+  .card.pad { padding: 16px; }
+
+  .tw { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--s400); padding: 10px 14px; border-bottom: 1px solid var(--s200); background: var(--s50); white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--s100); color: var(--s700); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lnk { border: none; background: none; padding: 0; font: inherit; color: var(--s950); font-weight: 500; text-align: left; }
+  .lnk:hover { color: var(--rose700); text-decoration: underline; }
+  .mono { font-family: var(--mono); font-size: 12.5px; }
+  .sub { font-size: 12px; color: var(--s400); margin-top: 2px; }
+
+  .pill { display: inline-block; border-radius: 999px; border: 1px solid; padding: 3px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .pill.draft { color: var(--s600); border-color: var(--s200); background: var(--s50); }
+  .pill.issued { color: var(--amber700); border-color: var(--amber200); background: var(--amber50); }
+  .pill.signed, .pill.active { color: var(--emer700); border-color: var(--emer200); background: var(--emer50); }
+  .pill.temuan { color: var(--rose700); border-color: #FECDD3; background: var(--rose50); }
+  .pill.off { color: var(--s400); border-color: var(--s200); background: var(--white); }
+
+  /* ---------- tahap ---------- */
+  .rail { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .st { display: flex; align-items: center; gap: 7px; flex: none; border: 1px solid var(--s200); background: var(--white); color: var(--s500); border-radius: 8px; padding: 6px 11px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+  .st .n { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-family: var(--mono); font-size: 10.5px; background: var(--s100); color: var(--s500); }
+  .st.on { border-color: var(--rose600); color: var(--s950); font-weight: 600; }
+  .st.on .n { background: var(--rose600); color: var(--white); }
+  .st.done .n { background: var(--emer600); color: var(--white); }
+
+  .fields { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { .fields { grid-template-columns: 1fr; } }
+  .fld { display: flex; flex-direction: column; gap: 4px; }
+  .fld > span { font-size: 12px; font-weight: 500; color: var(--s500); }
+  .fld input, .fld select { border: 1px solid var(--s200); border-radius: 6px; padding: 8px 12px; background: var(--white); color: var(--s950); width: 100%; }
+  .fld input:focus, .fld select:focus { outline: none; border-color: var(--rose500); }
+  .fld input.need, .fld select.need { border-color: var(--amber300); background: var(--amber50); }
+  .fld input[readonly] { background: var(--s50); color: var(--s600); }
+  .fld small { font-size: 11.5px; color: var(--s400); }
+  .fld small.warn { color: var(--amber700); font-weight: 500; }
+
+  .vlist { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+  .vrow { border: 1px solid var(--s200); border-radius: 8px; padding: 12px; }
+  .vrow.off { background: var(--s50); }
+  .vrow.sel { border-color: var(--rose600); box-shadow: inset 0 0 0 1px var(--rose600); }
+  .vrow .h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  .vrow .nm { font-size: 14px; font-weight: 600; color: var(--s950); }
+  .vrow .mt { font-size: 12px; color: var(--s500); margin-top: 2px; }
+  .vrow .ac { margin-top: 8px; display: flex; gap: 8px; }
+
+  .chk { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--s100); font-size: 14px; }
+  .chk:last-child { border-bottom: none; }
+  .chk .g { display: flex; gap: 5px; }
+  .chk input[type=text] { width: 130px; border: 1px solid var(--s200); border-radius: 6px; padding: 5px 9px; font-size: 13px; }
+  .chk input.need { border-color: var(--amber300); background: var(--amber50); }
+  .tgl { border: 1px solid var(--s200); background: var(--white); color: var(--s500); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+  .tgl.y { border-color: var(--emer600); background: var(--emer600); color: #fff; }
+  .tgl.n { border-color: var(--amber700); background: var(--amber700); color: #fff; }
+
+  .note { border-radius: 8px; padding: 11px 14px; font-size: 13.5px; }
+  .note.amb { border: 1px solid var(--amber200); background: var(--amber50); color: var(--amber700); }
+  .note.em { border: 1px solid var(--emer200); background: var(--emer50); color: var(--emer700); }
+  .note.sl { border: 1px solid var(--s200); background: var(--white); color: var(--s600); }
+  .note ul { margin: 6px 0 0; padding-left: 18px; }
+
+  .navbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--s200); padding-top: 14px; }
+  .navbar small { font-size: 12.5px; color: var(--s500); }
+  .navbar .g { display: flex; gap: 8px; }
+
+  /* ---------- lembar cetak ---------- */
+  .kertas { background: var(--white); border: 1px solid var(--s300); box-shadow: 0 18px 44px rgba(15,23,42,.14); max-width: 800px; margin: 0 auto; padding: 40px 44px; }
+  @media (max-width: 640px) { .kertas { padding: 22px 18px; } }
+  .kop { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 18px; }
+  .kop-b { display: flex; align-items: flex-start; gap: 16px; }
+  .kop-logo { width: 150px; height: 55px; flex: none; display: block; }
+  .kop-n { font-size: 16px; font-weight: 700; color: var(--s950); }
+  .kop-a { font-size: 11px; color: var(--s600); max-width: 24rem; line-height: 1.6; margin-top: 2px; }
+  .kop-d { font-size: 11px; color: var(--s400); margin-top: 3px; }
+  .kop-r { font-family: var(--mono); font-size: 11px; color: var(--s500); text-align: right; line-height: 1.7; }
+  .rule { height: 4px; margin: 14px 0 22px; background: linear-gradient(to right, var(--klaUngu) 0 64%, var(--klaKuning) 64% 100%); }
+  .dh { text-align: center; margin-bottom: 20px; }
+  .dh h2 { margin: 0; font-size: 17px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .dh p { margin: 4px 0 0; font-size: 13px; color: var(--s600); }
+  .dh .no { font-family: var(--mono); font-size: 12px; color: var(--s500); margin-top: 3px; }
+  .doc { font-size: 13px; line-height: 1.7; color: var(--s900); display: flex; flex-direction: column; gap: 14px; }
+  .doc p { margin: 0; }
+  .bh { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--klaUngu); border-bottom: 1px solid var(--s200); padding-bottom: 4px; margin-bottom: 7px; }
+  .dl { display: grid; grid-template-columns: 155px 1fr; gap: 2px 12px; font-size: 13px; }
+  @media (max-width: 560px) { .dl { grid-template-columns: 105px 1fr; } }
+  .dl dt { color: var(--s500); }
+  .dl dd { margin: 0; }
+  .kertas table { font-size: 12px; }
+  .kertas th { background: none; border-bottom: 1.5px solid var(--s950); padding: 7px 8px; }
+  .kertas td { padding: 7px 8px; }
+  .kertas tr.gr td { font-weight: 700; border-top: 1.5px solid var(--s950); border-bottom: 1.5px solid var(--s950); background: var(--s50); color: var(--s950); }
+  .ttd { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--s200); }
+  .ttd.dua { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 640px) { .ttd, .ttd.dua { grid-template-columns: 1fr; gap: 26px; } }
+  .tt { text-align: center; display: flex; flex-direction: column; gap: 3px; }
+  .tt .r { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--s400); }
+  .tt .sp { height: 68px; margin: 5px 0 2px; border-bottom: 1px solid var(--s950); display: flex; align-items: center; justify-content: center; }
+  .tt .mtr { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; color: var(--rose700); border: 1px dashed var(--rose700); padding: 8px 7px; line-height: 1.4; }
+  .tt .qr { width: 48px; height: 48px; border: 1px solid var(--s300); display: grid; place-items: center; font-family: var(--mono); font-size: 8px; color: var(--s400); text-align: center; line-height: 1.25; }
+  .tt .w { font-size: 13px; font-weight: 600; color: var(--s950); }
+  .tt .j { font-size: 11px; color: var(--s500); }
+  .cap { text-align: center; font-size: 10px; color: var(--s400); margin-top: 14px; }
+
+  @page { size: A4 portrait; margin: 12mm; }
+  @media print {
+    .no-print { display: none !important; }
+    body, .shell, .main, .view { background: #fff !important; display: block !important; padding: 0 !important; }
+    .side, .top { display: none !important; }
+    .kertas { box-shadow: none !important; border: none !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="shell buka" id="shell">
+
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden"><symbol id="klaLogo" viewBox="0 370 1181 430"><rect x="0" y="370" width="1181" height="430" fill="#471969"/>
+  <path fill="#FFC509" fill-rule="evenodd" clip-rule="evenodd" d="
+M 972 743 L 972 755 L 974 751 L 976 751 L 979 754 L 981 746 L 978 745 L 980 747 L 975 751 L 973 749 L 973 744 L 977 743 Z
+M 889 690 L 884 696 L 885 761 L 896 761 L 897 759 L 897 702 L 900 699 L 929 699 L 936 706 L 936 718 L 934 722 L 928 726 L 909 726 L 906 729 L 908 736 L 932 760 L 947 761 L 947 759 L 923 737 L 924 735 L 935 735 L 941 733 L 945 729 L 949 714 L 949 708 L 945 695 L 938 690 L 937 691 L 935 689 Z
+M 797 691 L 794 697 L 794 753 L 796 755 L 796 758 L 800 761 L 850 761 L 850 751 L 809 751 L 807 749 L 808 729 L 849 729 L 849 719 L 809 720 L 807 718 L 807 702 L 809 699 L 850 699 L 851 689 L 801 689 Z
+M 697 689 L 698 699 L 724 699 L 726 701 L 726 761 L 737 761 L 737 701 L 739 699 L 765 699 L 766 689 Z
+M 607 689 L 606 738 L 608 741 L 608 748 L 612 754 L 619 759 L 633 762 L 649 761 L 656 759 L 662 755 L 665 749 L 667 748 L 669 737 L 668 689 L 656 689 L 656 743 L 649 750 L 643 752 L 628 751 L 619 742 L 619 689 Z
+M 565 691 L 559 689 L 516 689 L 512 691 L 509 696 L 510 761 L 520 761 L 521 737 L 523 735 L 560 735 L 568 731 L 573 719 L 573 705 L 571 702 L 571 698 Z
+M 521 702 L 524 699 L 554 699 L 560 705 L 560 720 L 554 725 L 523 725 L 521 723 Z
+M 197 694 L 190 702 L 188 707 L 188 713 L 186 716 L 186 735 L 188 739 L 188 744 L 192 751 L 198 757 L 205 760 L 245 761 L 245 751 L 210 750 L 203 745 L 199 737 L 199 714 L 201 712 L 203 705 L 208 701 L 214 699 L 244 699 L 245 689 L 211 689 Z
+M 384 693 L 384 761 L 395 761 L 395 704 L 397 702 L 400 703 L 400 706 L 408 723 L 408 727 L 412 734 L 413 740 L 416 744 L 416 748 L 418 749 L 418 753 L 421 759 L 427 762 L 433 761 L 437 757 L 440 750 L 439 749 L 443 742 L 443 738 L 447 731 L 447 727 L 449 726 L 449 723 L 453 716 L 455 707 L 460 702 L 462 705 L 461 759 L 462 761 L 472 761 L 473 694 L 470 690 L 460 688 L 452 692 L 446 709 L 444 711 L 444 714 L 442 716 L 440 725 L 432 742 L 432 746 L 429 749 L 423 741 L 421 732 L 419 731 L 419 727 L 411 710 L 409 701 L 404 692 L 401 689 L 393 688 L 387 690 Z
+M 284 696 L 280 702 L 277 711 L 277 738 L 280 748 L 282 749 L 281 750 L 288 757 L 294 760 L 306 762 L 328 761 L 339 757 L 345 751 L 347 743 L 349 741 L 349 709 L 347 707 L 348 705 L 345 699 L 335 691 L 319 688 L 298 689 Z
+M 301 699 L 322 698 L 328 700 L 336 708 L 336 715 L 338 718 L 338 731 L 336 734 L 336 741 L 329 749 L 319 753 L 305 752 L 296 748 L 291 741 L 289 733 L 289 716 L 293 705 Z
+M 310 595 L 314 601 L 362 652 L 437 651 L 407 622 L 402 619 L 385 601 L 384 602 L 376 593 Z
+M 188 593 L 188 651 L 216 653 L 248 653 L 249 595 L 243 593 Z
+M 453 591 L 454 630 L 459 640 L 467 648 L 472 650 L 492 653 L 657 651 L 656 604 L 530 605 L 524 604 L 518 600 L 515 595 L 514 587 Z
+M 772 543 L 735 553 L 710 558 L 707 560 L 704 570 L 701 574 L 702 575 L 699 579 L 700 580 L 696 586 L 696 590 L 694 591 L 688 609 L 685 613 L 686 614 L 683 618 L 684 619 L 676 635 L 676 639 L 673 642 L 674 643 L 670 650 L 671 652 L 732 653 L 735 651 L 735 647 L 737 646 L 737 643 L 743 631 L 743 627 L 745 626 L 744 625 L 751 610 L 751 605 L 753 604 L 753 601 L 755 599 L 755 595 L 757 593 L 757 589 L 759 587 L 758 586 L 760 584 L 761 577 L 765 569 L 765 565 L 767 564 L 767 559 L 773 547 Z
+M 972 475 L 968 475 L 960 479 L 959 481 L 955 481 L 929 493 L 914 498 L 911 501 L 909 500 L 896 505 L 895 507 L 893 506 L 879 512 L 836 525 L 836 530 L 838 532 L 838 535 L 848 557 L 848 561 L 850 563 L 849 564 L 854 575 L 854 579 L 856 581 L 856 585 L 858 587 L 862 603 L 864 604 L 864 608 L 868 615 L 870 624 L 872 625 L 872 629 L 874 631 L 880 649 L 883 653 L 917 653 L 947 651 L 943 645 L 941 637 L 931 617 L 930 611 L 927 608 L 925 599 L 923 598 L 923 595 L 917 583 L 918 582 L 911 569 L 911 566 L 909 564 L 910 563 L 903 550 L 903 547 L 895 529 L 938 499 L 944 493 L 945 494 Z
+M 1051 423 L 1048 421 L 1040 420 L 1031 421 L 1046 422 L 1048 424 L 1025 430 L 998 445 L 997 444 L 1008 434 L 1023 426 L 1023 424 L 1020 426 L 1003 425 L 979 448 L 978 451 L 987 452 L 986 459 L 988 463 L 993 468 L 997 468 L 994 474 L 995 476 L 1014 471 L 1026 466 L 1029 463 L 1031 458 L 1030 457 L 1018 463 L 1013 462 L 1031 453 L 1043 443 L 1047 435 L 1049 434 L 1049 431 L 1051 429 Z
+M 453 408 L 452 553 L 484 553 L 514 551 L 515 409 Z
+M 425 408 L 352 408 L 336 426 L 336 428 L 328 435 L 320 446 L 308 458 L 308 460 L 288 481 L 288 483 L 282 488 L 272 502 L 272 505 L 268 510 L 266 525 L 268 529 L 268 536 L 274 549 L 332 552 L 332 550 L 319 535 L 319 525 L 323 518 L 335 505 L 335 503 L 395 441 L 399 435 L 425 410 Z
+M 189 408 L 188 539 L 192 541 L 248 546 L 249 409 Z
+M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 L 804 466 L 807 463 L 811 464 L 814 469 L 813 470 L 816 474 L 816 478 L 820 486 L 820 489 L 828 506 L 878 495 L 972 465 L 961 465 L 874 476 L 871 473 L 865 455 L 863 454 L 859 441 L 853 430 L 853 427 L 851 426 L 852 425 L 847 420 L 847 418 L 841 413 L 832 408 L 817 405 L 797 405 L 786 407 L 774 413 L 763 426 L 764 427 L 762 428 L 762 431 L 758 437 L 756 445 L 753 449 L 754 450 L 752 451 L 752 455 L 749 458 L 750 459 L 746 465 L 746 468 L 738 484 L 736 493 L 734 494 L 732 502 L 730 504 L 730 507 L 728 508 L 726 517 L 724 518 L 725 519 Z
+  "/></symbol></svg>
+
+  <aside class="side">
+    <div class="side-top">
+      <svg class="side-logo" role="img" aria-label="KLA Computer"><use href="#klaLogo"></use></svg>
+      <div class="ws"><b>KLA Ops Workspace</b><span>Maintenance · Ekspansi · Chat · SOP</span></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+
+  <div class="main">
+    <div class="top no-print">
+      <div class="stripe"></div>
+      <div class="row">
+        <div class="kiri">
+          <button class="btn ic" id="tglSide" aria-label="Buka tutup menu">☰</button>
+          <div>
+            <b>Kristianto</b>
+            <small>PIC Maintenance · Simulasi</small>
+          </div>
+        </div>
+        <button class="btn" id="btnReset">Reset simulasi</button>
+      </div>
+    </div>
+    <div class="view" id="view"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // =========================================================================
+  // Aturan — disalin dari lib/bast.ts di aplikasi sungguhan supaya simulasi
+  // ini tidak menjanjikan perilaku yang berbeda dari yang dibangun.
+  // =========================================================================
+  var KOP_NAME = 'PT. KLA Teknologi Indonesia';
+  var KOP_ADDR = 'RUKO MATARAM PLAZA D8-9, JALAN MT. HARYONO NO. 428-429, JAGALAN, SEMARANG';
+  var KOP_DIV = 'Divisi Maintenance & Expansion';
+
+  var KATEGORI = ['Renovasi', 'Sipil', 'Interior', 'Kelistrikan / PLN', 'AC', 'CCTV & Keamanan', 'Jaringan & WiFi', 'Inventaris', 'Rak & Mebel', 'Signage', 'Logistik', 'Supplier Barang', 'Lainnya'];
+  var K_VOLUME = ['Renovasi', 'Sipil', 'Interior', 'Signage', 'AC', 'Lainnya'];
+  var K_SERIAL = ['Kelistrikan / PLN', 'CCTV & Keamanan', 'Jaringan & WiFi', 'Inventaris', 'Rak & Mebel', 'Supplier Barang', 'AC'];
+  var K_RETENSI = ['Renovasi', 'Sipil', 'Interior', 'Signage'];
+  var K_GARANSI = ['Kelistrikan / PLN', 'CCTV & Keamanan', 'Jaringan & WiFi', 'Inventaris', 'Rak & Mebel', 'Supplier Barang', 'AC'];
+
+  var adaVolume = function (k) { return K_VOLUME.indexOf(k) >= 0; };
+  var adaSerial = function (k) { return K_SERIAL.indexOf(k) >= 0; };
+  var adaRetensi = function (k) { return K_RETENSI.indexOf(k) >= 0; };
+  var adaGaransi = function (k) { return K_GARANSI.indexOf(k) >= 0; };
+  var adaPln = function (k) { return k === 'Kelistrikan / PLN'; };
+
+  var LABEL_TAHAP = { dasar: 'Dasar & vendor', daya: 'Perubahan daya', rincian: 'Rincian', uji: 'Uji terima', temuan: 'Temuan', jaminan: 'Jaminan & retensi', terbit: 'Terbitkan' };
+
+  function tahapUntuk(kategori, adaTemuan) {
+    var s = ['dasar'];
+    if (adaPln(kategori)) s.push('daya');
+    s.push('rincian', 'uji');
+    if (adaTemuan) s.push('temuan');
+    if (adaRetensi(kategori) || adaGaransi(kategori)) s.push('jaminan');
+    s.push('terbit');
+    return s;
+  }
+
+  function kurangVendor(v) {
+    if (!v) return [{ label: 'Vendor belum dipilih' }];
+    var out = [];
+    var kosong = function (x) { return String(x == null ? '' : x).trim() === ''; };
+    if (kosong(v.npwp)) out.push({ label: 'NPWP / NIK' });
+    if (kosong(v.contact_name)) out.push({ label: 'PIC vendor' });
+    if (kosong(v.phone)) out.push({ label: 'No. HP / WA' });
+    if (kosong(v.bank_name)) out.push({ label: 'Bank' });
+    if (kosong(v.bank_account_number)) out.push({ label: 'No. rekening' });
+    if (kosong(v.bank_account_name)) out.push({ label: 'Nama rekening' });
+    return out;
+  }
+  var vendorBolehDipilih = function (v) { return kurangVendor(v).length === 0 && v.status !== 'inactive'; };
+
+  var pad3 = function (n) { return String(n).padStart(3, '0'); };
+  var pad2 = function (n) { return String(n).padStart(2, '0'); };
+  var nomorBast = function (seq, d) { return 'BAST/' + d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + pad3(seq); };
+  var nomorPakta = function (seq, d) { return 'PI-VND/' + d.getFullYear() + '/' + pad3(seq); };
+
+  var rp = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
+
+  var BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  var ANGKA = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+
+  function terbilang(n) {
+    n = Math.floor(Math.abs(n));
+    if (n < 12) return ANGKA[n];
+    if (n < 20) return terbilang(n - 10) + ' belas';
+    if (n < 100) return terbilang(Math.floor(n / 10)) + ' puluh' + (n % 10 ? ' ' + terbilang(n % 10) : '');
+    return String(n);
+  }
+
+  function tglPendek(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.getDate() + ' ' + BULAN[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear();
+  }
+
+  function kalimatTanggal(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var th = d.getFullYear();
+    var thKata = th === 2026 ? 'dua ribu dua puluh enam' : String(th);
+    return 'Pada hari ini, ' + HARI[d.getDay()] + ', tanggal ' + terbilang(d.getDate()) + ' bulan ' + BULAN[d.getMonth()] +
+      ' tahun ' + thKata + ' (' + pad2(d.getDate()) + '-' + pad2(d.getMonth() + 1) + '-' + th + ')';
+  }
+
+  var hariLagi = function (iso) {
+    if (!iso) return null;
+    var a = new Date(new Date().toISOString().slice(0, 10)).getTime();
+    var b = new Date(iso).getTime();
+    if (isNaN(b)) return null;
+    return Math.round((b - a) / 86400000);
+  };
+
+  // =========================================================================
+  // Data contoh. Semuanya di memori — TIDAK ADA yang disimpan.
+  // =========================================================================
+  var TEMPLATE = {
+    'Renovasi': [
+      ['Dinding rata, tanpa retak rambut', 0], ['Lantai rata, nat rapi, tidak ada keramik bunyi', 0],
+      ['Pintu & kusen membuka menutup normal', 1], ['Seluruh titik lampu menyala', 1],
+      ['Seluruh stop kontak berfungsi', 1], ['Plafon rapi, sambungan nat tertutup', 0],
+      ['Area kerja bersih, puing diangkut', 0]
+    ],
+    'Kelistrikan / PLN': [
+      ['Tegangan R-N dalam batas 198-231 V', 1], ['Tegangan S-N dalam batas 198-231 V', 1],
+      ['Tegangan T-N dalam batas 198-231 V', 1], ['Tahanan pembumian ≤ 5 ohm', 1],
+      ['Beban seimbang antar fasa', 1], ['Instalasi menyala dan bekerja normal', 1],
+      ['Foto kWh meter lama & baru dilampirkan', 1], ['Sertifikat Laik Operasi (SLO) diterima', 1]
+    ],
+    'CCTV & Keamanan': [
+      ['Seluruh kamera merekam & terlihat di monitor', 1], ['Rekaman tersimpan dan dapat diputar ulang', 0],
+      ['Retensi rekaman memenuhi ketentuan', 1], ['Akses jarak jauh diuji dari perangkat cabang', 0],
+      ['Kartu garansi & buku manual diserahkan', 1], ['Akun administrator diserahkan & sandi diganti penerima', 0],
+      ['Operator cabang sudah dilatih', 1]
+    ],
+    'Jaringan & WiFi': [
+      ['Seluruh titik akses menyala dan terjangkau', 1], ['Kecepatan diuji di titik terjauh', 1],
+      ['Kabel tertata dan berlabel', 0], ['Akun administrator diserahkan & sandi diganti penerima', 0]
+    ],
+    'Inventaris': [
+      ['Jumlah barang sesuai daftar', 1], ['Barang dalam keadaan baik, tanpa cacat', 0],
+      ['Nomor seri dicatat seluruhnya', 0], ['Kartu garansi & buku manual diserahkan', 1]
+    ],
+    'Interior': [
+      ['Ukuran dan penempatan sesuai gambar', 0], ['Permukaan mulus, tanpa goresan', 0],
+      ['Sambungan kuat dan tidak goyang', 0], ['Area kerja bersih', 0]
+    ],
+    'Signage': [['Ukuran dan warna sesuai standar merek', 0], ['Lampu menyala merata', 0], ['Dudukan kuat dan tahan angin', 0]],
+    'Lainnya': [['Pekerjaan selesai sesuai lingkup yang disepakati', 0], ['Hasil diuji dan berfungsi', 0], ['Area kerja bersih dan dirapikan', 0]]
+  };
+  var templateUntuk = function (k) { return TEMPLATE[k] || TEMPLATE['Lainnya']; };
+
+  var BUTIR_PAKTA = [
+    'Tidak akan melakukan praktik korupsi, kolusi, dan nepotisme dalam bentuk apa pun.',
+    'Tidak menawarkan atau memberikan uang, barang, hadiah, komisi, potongan pribadi, fasilitas, hiburan, atau gratifikasi dalam bentuk apa pun kepada karyawan KLA Computer — baik langsung maupun melalui perantara — pada setiap tahap penawaran, negosiasi, pelaksanaan, hingga pembayaran.',
+    'Menyampaikan penawaran harga secara wajar dan mandiri, tanpa persekongkolan dengan penyedia lain, tanpa pengaturan harga, dan tanpa meminjam atau meminjamkan bendera perusahaan.',
+    'Mengungkapkan hubungan keluarga, kepemilikan, atau kepentingan lain dengan karyawan KLA Computer apabila ada.',
+    'Menerima pembayaran hanya melalui rekening atas nama badan usaha atau nama pribadi sendiri sebagaimana tercantum dalam data rekanan, dan tidak melalui rekening pihak lain.',
+    'Menjaga kerahasiaan gambar, harga, data, dan informasi KLA Computer yang diperoleh selama pekerjaan, serta tidak menggunakannya untuk kepentingan lain.',
+    'Bertanggung jawab atas keselamatan kerja pekerja sendiri selama berada di lokasi KLA Computer.',
+    'Bersedia menerima sanksi apabila melanggar pernyataan ini, berupa pembatalan pekerjaan, pemutusan kontrak sepihak, penahanan pembayaran, pencabutan status rekanan selama sekurang-kurangnya 2 tahun, serta tuntutan hukum sesuai peraturan perundang-undangan yang berlaku.'
+  ];
+
+  var CABANG = [
+    { id: 'b1', name: 'KLA Computer Semarang Timur', address: 'Jl. Majapahit No. 300, Semarang' },
+    { id: 'b2', name: 'KLA Computer Slawi', address: 'Jl. Ahmad Yani No. 88, Kab. Tegal', pln: '5310 2244 8871' },
+    { id: 'b3', name: 'KLA Computer Yogyakarta', address: 'Jl. Magelang KM 5, Sleman' },
+    { id: 'b4', name: 'KLA Computer Tegal', address: 'Jl. Gajah Mada No. 12, Tegal' }
+  ];
+
+  var ORANG = [
+    { id: 'p1', full_name: 'Rizal Pratama', role: 'PIC Maintenance' },
+    { id: 'p2', full_name: 'Dian Kusuma', role: 'Kepala Cabang Slawi' },
+    { id: 'p3', full_name: 'Wahyu Setiawan', role: 'Kepala Cabang Yogyakarta' },
+    { id: 'p4', full_name: 'Kristianto', role: 'Super Admin' }
+  ];
+
+  function dataAwal() {
+    return {
+      vendors: [
+        { id: 'v1', name: 'CV Karya Bangun Sejahtera', legal_type: 'cv', category: 'Renovasi', contact_name: 'Budi Santoso', phone: '0812-2547-8891', npwp: '31.402.115.7-503.000', address: 'Jl. Majapahit No. 214, Semarang', bank_name: 'BCA', bank_account_number: '0093 2244 71', bank_account_name: 'CV Karya Bangun Sejahtera', status: 'active' },
+        { id: 'v2', name: 'CV Arus Teknik Mandiri', legal_type: 'cv', category: 'Listrik', contact_name: 'Slamet Riyadi', phone: '0813-2290-4417', npwp: '42.118.903.4-501.000', address: 'Jl. Kartini No. 45, Tegal', bank_name: 'BRI', bank_account_number: '0341 0100 5578 301', bank_account_name: 'CV Arus Teknik Mandiri', status: 'active' },
+        { id: 'v3', name: 'CV Sinar Visual Teknologi', legal_type: 'cv', category: 'CCTV', contact_name: 'Andi Nugroho', phone: '0857-3311-9022', npwp: '83.550.271.9-542.000', address: 'Jl. Kaliurang KM 7, Sleman', bank_name: 'Mandiri', bank_account_number: '1370 0099 4471 8', bank_account_name: 'CV Sinar Visual Teknologi', status: 'active' },
+        { id: 'v4', name: 'UD Terang Jaya Elektrik', legal_type: 'toko', category: 'Listrik', contact_name: 'Hendra', phone: '0857-4412-0098', npwp: '', address: 'Jl. Pemuda No. 9, Tegal', bank_name: 'BCA', bank_account_number: '8820 4471 09', bank_account_name: 'Hendra Wijaya', status: 'active' },
+        { id: 'v5', name: 'Pak Warno — Tukang Listrik', legal_type: 'pribadi', category: 'Listrik', contact_name: 'Warno', phone: '0812-9004-3318', npwp: '3328xxxxxxxxxxx1', address: 'Slawi, Kab. Tegal', bank_name: '', bank_account_number: '', bank_account_name: '', status: 'active' },
+        { id: 'v6', name: 'CV Arus Sejahtera Teknik', legal_type: 'cv', category: 'Listrik', contact_name: 'Sugeng', phone: '0811-2299-3311', npwp: '55.110.223.4-503.000', address: 'Semarang', bank_name: 'BNI', bank_account_number: '0099 1122 33', bank_account_name: 'CV Arus Sejahtera Teknik', status: 'inactive' },
+        { id: 'v7', name: 'UD Mitra Karya Mebel', legal_type: 'toko', category: 'Rak & Mebel', contact_name: 'Sri Lestari', phone: '0878-1122-4455', npwp: '3374xxxxxxxxxxx8', address: 'Jl. Pasar Baru No. 3, Tegal', bank_name: 'BCA', bank_account_number: '4471 9900 21', bank_account_name: 'Sri Lestari', status: 'active' }
+      ],
+      pacts: [
+        { id: 'pk1', number: 'PI-VND/2026/011', vendor_id: 'v1', status: 'active', signed_date: '2026-01-22', valid_until: '2027-01-22', relation: false, relation_note: '' },
+        { id: 'pk2', number: 'PI-VND/2026/018', vendor_id: 'v2', status: 'active', signed_date: '2026-02-14', valid_until: '2027-02-14', relation: false, relation_note: '' },
+        { id: 'pk3', number: 'PI-VND/2026/026', vendor_id: 'v3', status: 'active', signed_date: '2026-08-03', valid_until: '2026-09-20', relation: false, relation_note: '' }
+      ],
+      docs: [
+        {
+          id: 'd1', number: 'BAST/2026/08/034', title: 'Pengadaan & pemasangan CCTV', category: 'CCTV & Keamanan',
+          branch_id: 'b3', vendor_id: 'v3', status: 'signed', doc_date: '2026-08-27', signed_date: '2026-08-28',
+          receiver_id: 'p1', witness_id: 'p3', ppn: true,
+          items: [
+            { d: 'Kamera IP dome 4MP', m: 'Hikvision DS-2CD1143', s: 'SN-4471…4478', v: '8 unit', a: 12800000 },
+            { d: 'NVR 8 channel + HDD 2 TB', m: 'Hikvision DS-7608', s: 'SN-90233', v: '1 unit', a: 4350000 },
+            { d: 'Switch PoE 8 port', m: 'TP-Link TL-SG1008P', s: '', v: '1 unit', a: 1150000 },
+            { d: 'Kabel UTP Cat6 + instalasi', m: 'Belden', s: '', v: '180 m', a: 5400000 },
+            { d: 'Konfigurasi & pelatihan operator', m: '', s: '', v: '1 paket', a: 1500000 }
+          ],
+          checks: null, findings: [], garansi_alat: '12 bulan — pabrikan', garansi_jasa: '3 bulan sejak tanggal berita acara'
+        },
+        {
+          id: 'd2', number: 'BAST/2026/08/031', title: 'Upgrade daya listrik', category: 'Kelistrikan / PLN',
+          branch_id: 'b2', vendor_id: 'v2', status: 'issued', doc_date: '2026-08-26', signed_date: '',
+          receiver_id: 'p1', witness_id: 'p2', ppn: true,
+          pln: { cust: '5310 2244 8871', agenda: '5310250823-0417', dayaA: '5.500 VA', dayaB: '23.000 VA', tarifA: 'R1/TR', tarifB: 'B2/TR', fasaA: '1 fasa', fasaB: '3 fasa', meterA: '14778210', meterB: '20554873', standA: 'akhir 04.871 kWh', standB: 'awal 00.000 kWh' },
+          items: [
+            { d: 'Biaya Penyambungan PLN (BP)', m: '', s: 'Agenda 5310250823-0417', v: '', a: 15037500 },
+            { d: 'Materai & administrasi PLN', m: '', s: '', v: '', a: 20000 },
+            { d: 'Box panel + MCCB 3 × 35 A', m: '', s: '', v: '', a: 3100000 },
+            { d: 'Kabel SR NYY 4 × 16 mm², 30 m', m: '', s: '', v: '', a: 2450000 },
+            { d: 'Grounding rod 2 m + instalasi dalam', m: '', s: '', v: '', a: 3200000 }
+          ],
+          checks: [
+            { l: 'Tegangan R-N dalam batas 198-231 V', n: 1, p: true, v: '221 V' },
+            { l: 'Tegangan S-N dalam batas 198-231 V', n: 1, p: true, v: '219 V' },
+            { l: 'Tegangan T-N dalam batas 198-231 V', n: 1, p: true, v: '223 V' },
+            { l: 'Tahanan pembumian ≤ 5 ohm', n: 1, p: true, v: '3,8 Ω' },
+            { l: 'Beban seimbang antar fasa', n: 1, p: true, v: '6,4 / 5,9 / 6,1 A' },
+            { l: 'Instalasi menyala dan bekerja normal', n: 1, p: true, v: '14.20 WIB' },
+            { l: 'Foto kWh meter lama & baru dilampirkan', n: 1, p: true, v: '2 berkas' },
+            { l: 'Sertifikat Laik Operasi (SLO) diterima', n: 1, p: false, v: 'belum terbit' }
+          ],
+          findings: [{ id: 'f1', label: 'Sertifikat Laik Operasi (SLO) diterima', desc: 'SLO belum terbit dari lembaga inspeksi', who: 'CV Arus Teknik Mandiri', due: '2026-09-09', akibat: 'Pembayaran termin akhir ditahan', done: '' }],
+          garansi_jasa: '3 bulan sejak tanggal berita acara'
+        },
+        {
+          id: 'd3', number: 'BAST/2026/08/029', title: 'Renovasi bangunan', category: 'Renovasi',
+          branch_id: 'b1', vendor_id: 'v1', status: 'issued', doc_date: '2026-08-28', signed_date: '',
+          receiver_id: 'p1', witness_id: '', ppn: true,
+          items: [
+            { d: 'Bongkar partisi & plester ulang dinding lama', m: '', s: '', v: '96 m²', a: 18400000 },
+            { d: 'Pemasangan gypsum + rangka hollow', m: '', s: '', v: '128 m²', a: 41600000 },
+            { d: 'Cat interior 2 lapis', m: '', s: '', v: '210 m²', a: 12600000 },
+            { d: 'Lantai granit 60×60', m: '', s: '', v: '88 m²', a: 33440000 },
+            { d: 'Kusen & pintu kaca frameless', m: '', s: '', v: '3 unit', a: 21000000 },
+            { d: 'Instalasi titik lampu & stop kontak', m: '', s: '', v: '34 titik', a: 15300000 },
+            { d: 'Plafon area kasir + drop ceiling', m: '', s: '', v: '24 m²', a: 9600000 }
+          ],
+          checks: [
+            { l: 'Dinding rata, tanpa retak rambut', n: 0, p: true, v: '' },
+            { l: 'Lantai rata, nat rapi, tidak ada keramik bunyi', n: 0, p: true, v: '' },
+            { l: 'Pintu & kusen membuka menutup normal', n: 1, p: true, v: '3 unit' },
+            { l: 'Seluruh titik lampu menyala', n: 1, p: true, v: '34 titik' },
+            { l: 'Seluruh stop kontak berfungsi', n: 1, p: false, v: '1 mati' },
+            { l: 'Plafon rapi, sambungan nat tertutup', n: 0, p: false, v: '' },
+            { l: 'Area kerja bersih, puing diangkut', n: 0, p: true, v: '' }
+          ],
+          findings: [
+            { id: 'f2', label: 'Seluruh stop kontak berfungsi', desc: 'Satu stop kontak gudang tidak berfungsi', who: 'CV Karya Bangun Sejahtera', due: '2026-09-04', akibat: 'Retensi ditahan', done: '' },
+            { id: 'f3', label: 'Plafon rapi, sambungan nat tertutup', desc: 'Drop ceiling area kasir — nat belum rapi, 2 titik', who: 'CV Karya Bangun Sejahtera', due: '2026-09-04', akibat: 'Retensi ditahan', done: '' }
+          ],
+          retensi_persen: 5, retensi_hari: 90, garansi_jasa: '6 bulan'
+        },
+        {
+          id: 'd4', number: '', title: 'Pengadaan rak display', category: 'Rak & Mebel',
+          branch_id: 'b4', vendor_id: 'v7', status: 'draft', doc_date: '2026-08-21', signed_date: '',
+          receiver_id: 'p1', witness_id: '', ppn: false,
+          items: [{ d: 'Rak display kaca 5 tingkat', m: 'Custom', s: '', v: '6 unit', a: 18400000 }],
+          checks: null, findings: []
+        }
+      ],
+      counter: { bast: { 2026: 34 }, pakta: { 2026: 26 } },
+      seq: 100
+    };
+  }
+
+  var DB = dataAwal();
+  var UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', pesan: '' };
+
+  var uid = function (p) { DB.seq += 1; return p + DB.seq; };
+  var vendorOf = function (id) { return DB.vendors.filter(function (v) { return v.id === id; })[0] || null; };
+  var cabangOf = function (id) { return CABANG.filter(function (b) { return b.id === id; })[0] || null; };
+  var orangOf = function (id) { return ORANG.filter(function (p) { return p.id === id; })[0] || null; };
+  var docOf = function (id) { return DB.docs.filter(function (d) { return d.id === id; })[0] || null; };
+  var paktaOf = function (id) { return DB.pacts.filter(function (p) { return p.id === id; })[0] || null; };
+
+  function paktaAktif(vendorId) {
+    var hariIni = new Date().toISOString().slice(0, 10);
+    return DB.pacts.filter(function (p) {
+      return p.vendor_id === vendorId && p.status === 'active' && p.valid_until >= hariIni;
+    })[0] || null;
+  }
+
+  function pastikanChecks(d) {
+    if (d.checks) return;
+    d.checks = templateUntuk(d.category).map(function (t) { return { l: t[0], n: t[1], p: null, v: '' }; });
+  }
+
+  var subtotalOf = function (d) { return (d.items || []).reduce(function (s, x) { return s + Number(x.a || 0); }, 0); };
+  var ppnOf = function (d) { return d.ppn ? Math.round(subtotalOf(d) * 0.11) : 0; };
+  var totalOf = function (d) { return subtotalOf(d) + ppnOf(d); };
+  var temuanTerbuka = function (d) { return (d.findings || []).filter(function (f) { return !f.done; }); };
+
+  function kurangTerbit(d) {
+    var out = [];
+    if (!d.title.trim() || d.title === 'Berita acara baru') out.push('Judul pekerjaan');
+    if (!d.vendor_id) out.push('Vendor');
+    if (!d.branch_id) out.push('Cabang');
+    if (!d.receiver_id) out.push('Penerima');
+    if (!(d.items || []).length) out.push('Rincian (minimal satu baris)');
+    pastikanChecks(d);
+    if (d.checks.some(function (c) { return c.p === null; })) out.push('Uji terima — masih ada butir yang belum dijawab');
+    if (d.checks.some(function (c) { return c.n && c.p !== null && !String(c.v).trim(); })) out.push('Hasil ukur pada butir yang meminta angka');
+    if (adaPln(d.category)) {
+      var p = d.pln || {};
+      if (!String(p.dayaB || '').trim() || !String(p.meterB || '').trim()) out.push('Daya sesudah & nomor kWh meter baru');
+    }
+    if (temuanTerbuka(d).some(function (f) { return !f.due; })) out.push('Batas penyelesaian temuan');
+    return out.filter(function (x, i, a) { return a.indexOf(x) === i; });
+  }
+
+  // =========================================================================
+  // Sidebar
+  // =========================================================================
+  var IKON = {
+    interaksi: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+    maintenance: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-2.4z',
+    expansi: 'M4.5 16.5L3 21l4.5-1.5M14 4l6 6M9 15l-2 2M9 15l6 6 6-6-6-6-9 9z',
+    bep: 'M3 3v18h18M7 15l3-4 3 3 5-7',
+    workholic: 'M3 7h18v13H3zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    knowledge: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v15H6.5A2.5 2.5 0 0 0 4 19.5z',
+    masterdata: 'M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3zM3 6v6c0 1.66 4.03 3 9 3s9-1.34 9-3V6M3 12v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6',
+    governance: 'M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z'
+  };
+
+  var GRUP = [
+    ['Dashboard Interaksi', 'interaksi', ['Akun Telegram', 'WhatsApp Boss']],
+    ['Dashboard Maintenance', 'maintenance', ['Maintenance', 'Biaya Bulanan', 'Klaim Cepat']],
+    ['Dashboard Expansi', 'expansi', ['Project Overview', 'Project Management', 'Master Project']],
+    ['Dashboard BEP', 'bep', ['Balik Modal (BEP)', 'MaxGIS']],
+    ['Workholic Dashboard', 'workholic', ['Monthly Report', 'Purchase Order', 'Berita Acara (BAST)', 'Sticky Notes', 'Rekening Pribadi']],
+    ['Knowledge', 'knowledge', ['Everything', 'SOP Library']],
+    ['Master Data Dashboard', 'masterdata', ['Master Cabang', 'Master Vendor']],
+    ['Governance', 'governance', ['User & Akses', 'Audit Trail']]
+  ];
+
+  function gambarNav() {
+    var html = GRUP.map(function (g) {
+      var aktif = g[2].indexOf('Berita Acara (BAST)') >= 0;
+      var items = aktif ? g[2].map(function (label) {
+        var on = label === 'Berita Acara (BAST)';
+        return '<button class="nav-i' + (on ? ' on' : '') + '"' + (on ? ' data-go="list"' : ' disabled') + '>' +
+          '<span class="dot"></span><span>' + esc(label) + '</span>' + (on ? '<span class="tag">baru</span>' : '') + '</button>';
+      }).join('') : '';
+      return '<div class="grp"><div class="grp-h' + (aktif ? ' on' : '') + '">' +
+        '<span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + IKON[g[1]] + '"/></svg></span>' +
+        '<span>' + esc(g[0]) + '</span></div>' + (items ? '<div class="grp-i">' + items + '</div>' : '') + '</div>';
+    }).join('');
+    document.getElementById('nav').innerHTML = html;
+  }
+
+  // =========================================================================
+  // Tampilan
+  // =========================================================================
+  var spanduk = '<div class="banner no-print"><span>ℹ</span><span><b>Ini aplikasi percobaan.</b> Silakan diklik sepuasnya — tidak ada data yang disimpan. Tekan <b>Reset simulasi</b> untuk mengembalikan seperti semula.</span></div>';
+
+  function pesanHTML() {
+    if (!UI.pesan) return '';
+    return '<div class="note amb no-print">' + esc(UI.pesan) + '</div>';
+  }
+
+  function gambarDaftar() {
+    var hariIni = new Date();
+    var bulanIni = DB.docs.filter(function (d) {
+      var x = new Date(d.doc_date);
+      return x.getFullYear() === hariIni.getFullYear() && x.getMonth() === hariIni.getMonth();
+    }).length;
+    var draf = DB.docs.filter(function (d) { return d.status === 'draft'; }).length;
+    var temuan = DB.docs.reduce(function (s, d) { return s + temuanTerbuka(d).length; }, 0);
+    var paktaHabis = DB.pacts.filter(function (p) {
+      var sisa = hariLagi(p.valid_until);
+      return p.status === 'active' && sisa !== null && sisa <= 30;
+    }).length;
+
+    var baris = [];
+    DB.docs.forEach(function (d) { baris.push({ k: 'bast', o: d }); });
+    DB.pacts.forEach(function (p) { baris.push({ k: 'pakta', o: p }); });
+
+    if (UI.filter === 'pakta') baris = baris.filter(function (r) { return r.k === 'pakta'; });
+    else if (UI.filter === 'temuan') baris = baris.filter(function (r) { return r.k === 'bast' && temuanTerbuka(r.o).length > 0; });
+    else if (UI.filter !== 'semua') baris = baris.filter(function (r) { return r.k === 'bast' && r.o.status === UI.filter; });
+
+    var q = UI.q.trim().toLowerCase();
+    if (q) baris = baris.filter(function (r) {
+      var v = vendorOf(r.o.vendor_id);
+      var t = (r.k === 'bast' ? (r.o.number || '') + ' ' + r.o.title : (r.o.number || '') + ' Pakta Integritas') + ' ' + (v ? v.name : '');
+      return t.toLowerCase().indexOf(q) >= 0;
+    });
+
+    var filters = [['semua', 'Semua'], ['draft', 'Draf'], ['issued', 'Terbit'], ['signed', 'Ditandatangani'], ['temuan', 'Ada temuan'], ['pakta', 'Pakta Integritas']];
+
+    var rows = baris.map(function (r) {
+      var v = vendorOf(r.o.vendor_id);
+      if (r.k === 'bast') {
+        var d = r.o, tb = temuanTerbuka(d).length;
+        var kelas = tb ? 'temuan' : d.status;
+        var teks = tb ? tb + ' temuan terbuka' : ({ draft: 'Draf', issued: 'Terbit', signed: 'Ditandatangani' })[d.status] || d.status;
+        var cab = cabangOf(d.branch_id);
+        return '<tr><td><button class="lnk mono" data-open="' + d.id + '">' + esc(d.number || 'Belum bernomor') + '</button>' +
+          '<div class="sub">' + tglPendek(d.doc_date) + '</div></td>' +
+          '<td><button class="lnk" data-open="' + d.id + '">' + esc(d.title) + '</button>' +
+          '<div class="sub">' + esc([cab ? cab.name : '', d.category].filter(Boolean).join(' · ')) + '</div></td>' +
+          '<td>' + esc(v ? v.name : '—') + '</td>' +
+          '<td class="num">' + rp(totalOf(d)) + '</td>' +
+          '<td><span class="pill ' + kelas + '">' + esc(teks) + '</span></td></tr>';
+      }
+      var p = r.o;
+      var lbl = ({ draft: 'Draf', issued: 'Menunggu tanda tangan', active: 'Berlaku', expired: 'Kedaluwarsa' })[p.status] || p.status;
+      var sisa = hariLagi(p.valid_until);
+      return '<tr><td><button class="lnk mono" data-pakta="' + p.id + '">' + esc(p.number || 'Belum bernomor') + '</button>' +
+        '<div class="sub">' + tglPendek(p.signed_date) + '</div></td>' +
+        '<td><button class="lnk" data-pakta="' + p.id + '">Pakta Integritas</button>' +
+        '<div class="sub">' + (p.valid_until ? 'Berlaku s.d. ' + tglPendek(p.valid_until) + (sisa !== null && sisa <= 30 ? ' · ' + sisa + ' hari lagi' : '') : 'Belum ditandatangani') + '</div></td>' +
+        '<td>' + esc(v ? v.name : '—') + '</td><td class="num">—</td>' +
+        '<td><span class="pill ' + (p.status === 'active' ? 'active' : p.status) + '">' + esc(lbl) + '</span></td></tr>';
+    }).join('');
+
+    return spanduk + pesanHTML() +
+      '<div class="ph"><div><div class="k">Maintenance &amp; Expansion</div>' +
+      '<h1>Berita Acara Serah Terima</h1>' +
+      '<p>Semua BAST dan pakta integritas rekanan. Vendor selalu dipilih dari Master Vendor — tidak pernah diketik.</p></div>' +
+      '<div class="aksi"><button class="btn" data-baru="pakta">Pakta Integritas</button>' +
+      '<button class="btn pri" data-baru="bast">Buat BAST</button></div></div>' +
+
+      '<div class="stats">' +
+      '<div class="stat"><span>Bulan ini</span><b>' + bulanIni + '</b></div>' +
+      '<div class="stat"><span>Draf</span><b>' + draf + '</b></div>' +
+      '<div class="stat warn"><span>Temuan terbuka</span><b>' + temuan + '</b></div>' +
+      '<div class="stat warn"><span>Pakta habis &lt; 30 hari</span><b>' + paktaHabis + '</b></div></div>' +
+
+      '<div class="bar">' + filters.map(function (f) {
+        return '<button class="chip' + (UI.filter === f[0] ? ' on' : '') + '" data-filter="' + f[0] + '">' + f[1] + '</button>';
+      }).join('') + '<input class="cari" id="cari" placeholder="Cari nomor, pekerjaan, atau vendor" value="' + esc(UI.q) + '"></div>' +
+
+      '<div class="card"><div class="tw"><table><thead><tr>' +
+      '<th>Nomor</th><th>Pekerjaan</th><th>Vendor</th><th class="num">Nilai</th><th>Status</th>' +
+      '</tr></thead><tbody>' + (rows || '<tr><td colspan="5">Tidak ada dokumen pada saringan ini.</td></tr>') + '</tbody></table></div></div>';
+  }
+
+  // ---------------------------------------------------------------- editor
+  function gambarEditor() {
+    var d = docOf(UI.id);
+    if (!d) return '<div class="note sl">Dokumen tidak ditemukan.</div>';
+    pastikanChecks(d);
+
+    var kunci = d.status !== 'draft';
+    var tahap = tahapUntuk(d.category, temuanTerbuka(d).length > 0);
+    if (UI.step >= tahap.length) UI.step = tahap.length - 1;
+    var kini = tahap[UI.step];
+    var v = vendorOf(d.vendor_id);
+
+    var rail = '<div class="rail">' + tahap.map(function (t, i) {
+      return '<button class="st' + (i === UI.step ? ' on' : (i < UI.step ? ' done' : '')) + '" data-step="' + i + '">' +
+        '<span class="n">' + (i + 1) + '</span>' + LABEL_TAHAP[t] + '</button>';
+    }).join('') + '</div>';
+
+    var isi = '';
+
+    if (kini === 'dasar') {
+      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:14px">' +
+        '<div class="fields">' +
+        fld('Judul pekerjaan', '<input data-f="title" value="' + esc(d.title) + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Kategori', '<select data-f="category"' + (kunci ? ' disabled' : '') + '>' + KATEGORI.map(function (k) {
+          return '<option' + (k === d.category ? ' selected' : '') + '>' + esc(k) + '</option>';
+        }).join('') + '</select>', 'Menentukan blok mana yang muncul dan daftar uji terimanya.') +
+        fld('Cabang', '<select data-f="branch_id"' + (kunci ? ' disabled' : '') + '><option value="">— pilih cabang —</option>' +
+          CABANG.map(function (b) { return '<option value="' + b.id + '"' + (b.id === d.branch_id ? ' selected' : '') + '>' + esc(b.name) + '</option>'; }).join('') + '</select>') +
+        fld('Tanggal berita acara', '<input type="date" data-f="doc_date" value="' + esc(d.doc_date) + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Penerima (pihak KLA)', '<select data-f="receiver_id"' + (kunci ? ' disabled' : '') + '><option value="">— pilih —</option>' +
+          ORANG.map(function (p) { return '<option value="' + p.id + '"' + (p.id === d.receiver_id ? ' selected' : '') + '>' + esc(p.full_name) + '</option>'; }).join('') + '</select>') +
+        fld('Menyaksikan', '<select data-f="witness_id"' + (kunci ? ' disabled' : '') + '><option value="">— tidak ada —</option>' +
+          ORANG.map(function (p) { return '<option value="' + p.id + '"' + (p.id === d.witness_id ? ' selected' : '') + '>' + esc(p.full_name) + '</option>'; }).join('') + '</select>', 'Boleh dikosongkan.') +
+        '</div>' + blokVendor(d, v, kunci) + '</div>';
+    }
+
+    if (kini === 'daya') {
+      var p = d.pln || (d.pln = {});
+      var cab = cabangOf(d.branch_id);
+      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:12px">' +
+        '<div class="note sl">Nomor meter lama disimpan di dokumen ini dan <b>tidak menimpa</b> data cabang — inilah bukti kalau muncul tagihan susulan atas meter yang sudah dicabut.</div>' +
+        (cab && cab.pln ? '<div style="font-size:12px;color:var(--s400)">Meter terdaftar di cabang: ' + esc(cab.pln) + '</div>' : '') +
+        '<div class="fields">' +
+        fld('ID Pelanggan PLN', '<input data-p="cust" value="' + esc(p.cust || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Nomor agenda PLN', '<input data-p="agenda" value="' + esc(p.agenda || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Daya sebelum', '<input data-p="dayaA" placeholder="5.500 VA" value="' + esc(p.dayaA || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Daya sesudah', '<input data-p="dayaB" class="' + (p.dayaB ? '' : 'need') + '" placeholder="23.000 VA" value="' + esc(p.dayaB || '') + '"' + (kunci ? ' readonly' : '') + '>', 'Wajib', true) +
+        fld('Tarif sebelum', '<input data-p="tarifA" placeholder="R1/TR" value="' + esc(p.tarifA || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Tarif sesudah', '<input data-p="tarifB" placeholder="B2/TR" value="' + esc(p.tarifB || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Fasa sebelum', '<input data-p="fasaA" placeholder="1 fasa" value="' + esc(p.fasaA || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Fasa sesudah', '<input data-p="fasaB" placeholder="3 fasa" value="' + esc(p.fasaB || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('kWh meter lama', '<input data-p="meterA" value="' + esc(p.meterA || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('kWh meter baru', '<input data-p="meterB" class="' + (p.meterB ? '' : 'need') + '" value="' + esc(p.meterB || '') + '"' + (kunci ? ' readonly' : '') + '>', 'Wajib', true) +
+        fld('Stand meter lama', '<input data-p="standA" value="' + esc(p.standA || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        fld('Stand meter baru', '<input data-p="standB" value="' + esc(p.standB || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        '</div></div>';
+    }
+
+    if (kini === 'rincian') {
+      var kolSerial = adaSerial(d.category), kolVol = adaVolume(d.category);
+      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:12px"><div class="tw"><table><thead><tr>' +
+        '<th>Uraian</th>' + (kolSerial ? '<th>Merk / tipe</th><th>Nomor seri</th>' : '') + (kolVol ? '<th>Volume</th>' : '') +
+        '<th class="num">Nilai (Rp)</th><th></th></tr></thead><tbody>' +
+        (d.items.length ? d.items.map(function (it, i) {
+          return '<tr><td><input data-i="' + i + '" data-k="d" value="' + esc(it.d) + '"' + (kunci ? ' readonly' : '') + ' style="width:100%;border:1px solid var(--s200);border-radius:6px;padding:6px 10px"></td>' +
+            (kolSerial ? '<td><input data-i="' + i + '" data-k="m" value="' + esc(it.m || '') + '"' + (kunci ? ' readonly' : '') + ' style="width:100%;border:1px solid var(--s200);border-radius:6px;padding:6px 10px"></td>' +
+              '<td><input data-i="' + i + '" data-k="s" value="' + esc(it.s || '') + '"' + (kunci ? ' readonly' : '') + ' style="width:100%;border:1px solid var(--s200);border-radius:6px;padding:6px 10px"></td>' : '') +
+            (kolVol ? '<td><input data-i="' + i + '" data-k="v" value="' + esc(it.v || '') + '" placeholder="96 m²"' + (kunci ? ' readonly' : '') + ' style="width:100%;border:1px solid var(--s200);border-radius:6px;padding:6px 10px"></td>' : '') +
+            '<td class="num"><input data-i="' + i + '" data-k="a" inputmode="numeric" value="' + Number(it.a || 0) + '"' + (kunci ? ' readonly' : '') + ' style="width:120px;text-align:right;border:1px solid var(--s200);border-radius:6px;padding:6px 10px"></td>' +
+            '<td class="num">' + (kunci ? '' : '<button class="btn xs" data-del="' + i + '">Hapus</button>') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6">Belum ada baris.</td></tr>') +
+        '</tbody></table></div>' +
+        (kunci ? '' : '<button class="btn" data-add="1" style="align-self:flex-start">+ Tambah baris</button>') +
+        '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-top:1px solid var(--s200);padding-top:12px">' +
+        '<label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--s600)"><input type="checkbox" data-ppn="1"' + (d.ppn ? ' checked' : '') + (kunci ? ' disabled' : '') + '> Kena PPN 11%</label>' +
+        '<div style="text-align:right;font-size:14px"><div style="color:var(--s500)">Subtotal ' + rp(subtotalOf(d)) + '</div>' +
+        '<div style="color:var(--s500)">PPN ' + rp(ppnOf(d)) + '</div>' +
+        '<div style="font-size:16px;font-weight:600">Total ' + rp(totalOf(d)) + '</div></div></div></div>';
+    }
+
+    if (kini === 'uji') {
+      isi = '<div class="card pad">' + d.checks.map(function (c, i) {
+        return '<div class="chk"><span class="g">' +
+          '<button class="tgl' + (c.p === true ? ' y' : '') + '" data-chk="' + i + '" data-val="1"' + (kunci ? ' disabled' : '') + '>Lulus</button>' +
+          '<button class="tgl' + (c.p === false ? ' n' : '') + '" data-chk="' + i + '" data-val="0"' + (kunci ? ' disabled' : '') + '>Belum</button>' +
+          '</span><span>' + esc(c.l) + '</span>' +
+          (c.n ? '<input type="text" data-cv="' + i + '" class="' + (c.v ? '' : 'need') + '" placeholder="hasil ukur" value="' + esc(c.v || '') + '"' + (kunci ? ' readonly' : '') + '>' : '<span></span>') +
+          '</div>';
+      }).join('') +
+        '<div style="padding-top:10px;font-size:12px;color:var(--s400)">Butir yang dijawab <b>Belum</b> menerbitkan temuan pada tahap berikutnya. Berita acara tetap bisa terbit — statusnya diterima dengan catatan.</div></div>';
+    }
+
+    if (kini === 'temuan') {
+      var tb = temuanTerbuka(d);
+      isi = '<div style="display:flex;flex-direction:column;gap:12px">' + (tb.length ? tb.map(function (f) {
+        var idx = d.findings.indexOf(f);
+        return '<div class="card pad" style="border-color:var(--amber200);background:var(--amber50)">' +
+          '<div style="font-weight:600;margin-bottom:8px">' + esc(f.desc) + '</div><div class="fields">' +
+          fld('Penanggung jawab', '<input data-fd="' + idx + '" data-fk="who" value="' + esc(f.who || '') + '">') +
+          fld('Batas penyelesaian', '<input type="date" data-fd="' + idx + '" data-fk="due" class="' + (f.due ? '' : 'need') + '" value="' + esc(f.due || '') + '">', 'Wajib', true) +
+          fld('Akibat bila lewat', '<input data-fd="' + idx + '" data-fk="akibat" placeholder="Pembayaran termin akhir ditahan" value="' + esc(f.akibat || '') + '">') +
+          '</div>' + (kunci ? '<button class="btn sm" data-tutup="' + idx + '" style="margin-top:10px">Tandai selesai</button>' : '') + '</div>';
+      }).join('') : '<div class="note em">Tidak ada temuan terbuka.</div>') + '</div>';
+    }
+
+    if (kini === 'jaminan') {
+      isi = '<div class="card pad"><div class="fields">' +
+        (adaRetensi(d.category) ?
+          fld('Retensi (%)', '<input data-f="retensi_persen" inputmode="numeric" value="' + (d.retensi_persen || '') + '"' + (kunci ? ' readonly' : '') + '>', 'Ditahan sampai seluruh temuan selesai.') +
+          fld('Nilai retensi', '<input readonly value="' + rp(Math.round(totalOf(d) * (Number(d.retensi_persen) || 0) / 100)) + '">') +
+          fld('Masa pemeliharaan (hari)', '<input data-f="retensi_hari" inputmode="numeric" value="' + (d.retensi_hari || '') + '"' + (kunci ? ' readonly' : '') + '>') : '') +
+        (adaGaransi(d.category) ? fld('Garansi perangkat', '<input data-f="garansi_alat" placeholder="12 bulan — pabrikan" value="' + esc(d.garansi_alat || '') + '"' + (kunci ? ' readonly' : '') + '>') : '') +
+        fld('Garansi pemasangan', '<input data-f="garansi_jasa" placeholder="3 bulan sejak tanggal berita acara" value="' + esc(d.garansi_jasa || '') + '"' + (kunci ? ' readonly' : '') + '>') +
+        '</div></div>';
+    }
+
+    if (kini === 'terbit') {
+      if (!kunci) {
+        var kurang = kurangTerbit(d);
+        isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:12px">' +
+          (kurang.length
+            ? '<div class="note amb"><b>Belum bisa diterbitkan. Yang kurang:</b><ul>' + kurang.map(function (k) { return '<li>' + esc(k) + '</li>'; }).join('') + '</ul></div>'
+            : '<div class="note em">Siap diterbitkan. Nomor diambil saat tombol ditekan, dan setelah itu isinya terkunci.</div>') +
+          '<button class="btn pri" data-terbit="1"' + (kurang.length ? ' disabled' : '') + ' style="align-self:flex-start">Terbitkan</button></div>';
+      } else {
+        isi = '<div class="card pad"><div class="fields">' +
+          fld('Nomor', '<input readonly value="' + esc(d.number) + '">') +
+          fld('Status', '<input readonly value="' + (d.signed_date ? 'Ditandatangani' : 'Terbit') + '">') +
+          fld('Tanggal tanda tangan', '<input type="date" data-f="signed_date" class="' + (d.signed_date ? '' : 'need') + '" value="' + esc(d.signed_date || '') + '">', 'Dicatat setelah lembarnya ditandatangani basah. Tidak ada berkas yang diunggah.', !d.signed_date) +
+          fld('Arsip', '<input readonly value="Lembar asli bermeterai — disimpan PIC">') +
+          '</div></div>';
+      }
+    }
+
+    var cab2 = cabangOf(d.branch_id);
+    return spanduk + pesanHTML() +
+      '<div class="ph"><div><div class="k">' + (kunci ? (d.signed_date ? 'Ditandatangani' : 'Terbit') : 'Draf') + (d.number ? '' : ' · belum bernomor') + '</div>' +
+      '<h1>' + esc(d.number || d.title) + '</h1>' +
+      '<p>' + esc(d.title) + ' · ' + esc(d.category) + (cab2 ? ' · ' + esc(cab2.name) : '') + '</p></div>' +
+      '<div class="aksi"><button class="btn" data-go="list">Kembali</button>' +
+      (d.number ? '<button class="btn pri" data-cetak="' + d.id + '">Cetak</button>' : '') + '</div></div>' +
+      (kunci ? '<div class="note sl">Dokumen sudah terbit — isinya terkunci. Koreksi lewat dokumen pembetulan yang menunjuk nomor ini.</div>' : '') +
+      rail + isi +
+      '<div class="navbar"><small>Tahap ' + (UI.step + 1) + ' dari ' + tahap.length + '</small><span class="g">' +
+      '<button class="btn" data-nav="-1"' + (UI.step === 0 ? ' disabled' : '') + '>Kembali</button>' +
+      '<button class="btn pri" data-nav="1"' + (UI.step >= tahap.length - 1 ? ' disabled' : '') + '>Lanjut</button></span></div>';
+  }
+
+  function fld(label, input, hint, warn) {
+    return '<label class="fld"><span>' + esc(label) + '</span>' + input +
+      (hint ? '<small class="' + (warn ? 'warn' : '') + '">' + esc(hint) + '</small>' : '') + '</label>';
+  }
+
+  function blokVendor(d, v, kunci) {
+    var kurang = v ? kurangVendor(v) : [];
+    var pk = v ? paktaAktif(v.id) : null;
+    var picker = '';
+    if (UI.pickerOpen && !kunci) {
+      var q = UI.pickerQ.trim().toLowerCase();
+      var list = DB.vendors.filter(function (x) {
+        return !q || (x.name + ' ' + x.category + ' ' + x.contact_name).toLowerCase().indexOf(q) >= 0;
+      });
+      picker = '<div style="margin-top:12px;border:1px solid var(--s200);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px">' +
+        '<input id="pickerQ" placeholder="Cari nama vendor, kategori, atau PIC" value="' + esc(UI.pickerQ) + '" style="border:1px solid var(--s200);border-radius:6px;padding:8px 12px">' +
+        '<div class="vlist">' + list.map(function (x) {
+          var boleh = vendorBolehDipilih(x), g = kurangVendor(x);
+          var lencana = x.status === 'inactive' ? '<span class="pill off">Nonaktif</span>'
+            : boleh ? '<span class="pill active">Lengkap</span>'
+              : '<span class="pill issued">' + esc(g[0].label) + ' kosong</span>';
+          return '<div class="vrow' + (boleh ? '' : ' off') + (x.id === d.vendor_id ? ' sel' : '') + '">' +
+            '<div class="h"><span class="nm">' + esc(x.name) + '</span>' + lencana + '</div>' +
+            '<div class="mt">' + esc([String(x.legal_type || '').toUpperCase(), x.category, x.contact_name].filter(Boolean).join(' · ')) + '</div>' +
+            '<div class="ac"><button class="btn xs pri" data-pick="' + x.id + '"' + (boleh ? '' : ' disabled') + '>Pilih</button>' +
+            (boleh ? '' : '<button class="btn xs" data-lengkapi="' + x.id + '">Lengkapi data</button>') + '</div></div>';
+        }).join('') + '</div>' +
+        '<div style="font-size:11.5px;color:var(--amber700)">NPWP atau NIK wajib untuk semua vendor — pekerjaan jasa dipotong PPh, dan bukti potong harus menyebut nomor pajak penerima.</div></div>';
+    }
+
+    return '<div style="border:1px solid var(--s200);border-radius:8px;padding:12px">' +
+      '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px">' +
+      '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--s400);font-weight:500">Vendor — dari Master Vendor</div>' +
+      '<div style="margin-top:4px;font-weight:600">' + esc(v ? v.name : 'Belum dipilih') + '</div>' +
+      (v ? '<div style="font-size:12px;color:var(--s500);margin-top:2px">' + esc([v.npwp ? 'NPWP/NIK ' + v.npwp : '', v.bank_name ? v.bank_name + ' ' + v.bank_account_number : ''].filter(Boolean).join(' · ')) + '</div>' : '') +
+      (pk ? '<div style="font-size:12px;color:var(--emer700);margin-top:2px">Pakta ' + esc(pk.number) + ' · berlaku s.d. ' + tglPendek(pk.valid_until) + '</div>'
+        : v ? '<div style="font-size:12px;color:var(--amber700);margin-top:2px">Belum ada Pakta Integritas yang berlaku.</div>' : '') +
+      '</div>' +
+      (kunci ? '' : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-picker="1">' + (v ? 'Ganti vendor' : 'Pilih vendor') + '</button></div>') +
+      '</div>' +
+      (v && kurang.length ? '<div class="note amb" style="margin-top:10px">Data vendor belum lengkap: ' + esc(kurang.map(function (g) { return g.label; }).join(', ')) + '.</div>' : '') +
+      picker + '</div>';
+  }
+
+  // ---------------------------------------------------------------- pakta
+  function gambarPakta() {
+    var p = paktaOf(UI.id);
+    if (!p) return '<div class="note sl">Pakta tidak ditemukan.</div>';
+    var kunci = p.status !== 'draft';
+    var v = vendorOf(p.vendor_id);
+    var TAHAP = ['Pilih vendor', 'Periksa data', 'Pernyataan', 'Tanda tangan'];
+    if (UI.step >= TAHAP.length) UI.step = TAHAP.length - 1;
+
+    var rail = '<div class="rail">' + TAHAP.map(function (t, i) {
+      return '<button class="st' + (i === UI.step ? ' on' : (i < UI.step ? ' done' : '')) + '" data-step="' + i + '"><span class="n">' + (i + 1) + '</span>' + t + '</button>';
+    }).join('') + '</div>';
+
+    var isi = '';
+    if (UI.step === 0) {
+      var q = UI.pickerQ.trim().toLowerCase();
+      var list = DB.vendors.filter(function (x) { return !q || (x.name + ' ' + x.category).toLowerCase().indexOf(q) >= 0; });
+      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:10px">' +
+        '<div style="font-size:14px;color:var(--s500)">Pakta melekat pada vendor, bukan pada proyek. Sekali ditandatangani, berlaku 12 bulan.</div>' +
+        '<input id="pickerQ" placeholder="Cari nama vendor" value="' + esc(UI.pickerQ) + '" style="border:1px solid var(--s200);border-radius:6px;padding:8px 12px">' +
+        '<div class="vlist">' + list.map(function (x) {
+          var boleh = vendorBolehDipilih(x), g = kurangVendor(x);
+          var lencana = x.status === 'inactive' ? '<span class="pill off">Nonaktif</span>' : boleh ? '<span class="pill active">Lengkap</span>' : '<span class="pill issued">' + esc(g[0].label) + ' kosong</span>';
+          return '<div class="vrow' + (boleh ? '' : ' off') + (x.id === p.vendor_id ? ' sel' : '') + '">' +
+            '<div class="h"><span class="nm">' + esc(x.name) + '</span>' + lencana + '</div>' +
+            '<div class="mt">' + esc([String(x.legal_type || '').toUpperCase(), x.category].filter(Boolean).join(' · ')) + '</div>' +
+            (kunci ? '' : '<div class="ac"><button class="btn xs pri" data-pickp="' + x.id + '"' + (boleh ? '' : ' disabled') + '>Pilih</button></div>') + '</div>';
+        }).join('') + '</div></div>';
+    }
+
+    if (UI.step === 1) {
+      isi = v ? '<div class="card pad"><div class="fields">' +
+        fld('Nama penanda tangan', '<input readonly value="' + esc(v.contact_name) + '">') +
+        fld('Badan usaha', '<input readonly value="' + esc(v.name) + '">') +
+        fld('NPWP / NIK', '<input readonly value="' + esc(v.npwp) + '">') +
+        fld('Alamat', '<input readonly value="' + esc(v.address) + '">') +
+        fld('Rekening terdaftar', '<input readonly value="' + esc([v.bank_name, v.bank_account_number, v.bank_account_name].filter(Boolean).join(' · ')) + '">') +
+        '</div><div class="note sl" style="margin-top:12px">Semua dari Master Vendor. Butir 5 mengikat vendor pada rekening ini.</div></div>'
+        : '<div class="note sl">Pilih vendornya dulu di tahap 1.</div>';
+    }
+
+    if (UI.step === 2) {
+      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:12px">' +
+        '<div style="font-size:14px;color:var(--s500)">Delapan butir baku, tidak bisa diubah per vendor. Hanya butir 4 yang perlu diisi.</div>' +
+        '<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14px">' +
+        BUTIR_PAKTA.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ol>' +
+        '<div style="border:1px solid var(--s200);border-radius:8px;padding:12px">' +
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--s400);font-weight:500">Butir 4 — hubungan dengan karyawan KLA</div>' +
+        '<div style="margin-top:8px;display:flex;gap:18px;flex-wrap:wrap;font-size:14px">' +
+        '<label style="display:flex;gap:7px;align-items:center"><input type="radio" name="rel" data-rel="0"' + (p.relation ? '' : ' checked') + (kunci ? ' disabled' : '') + '> Tidak ada</label>' +
+        '<label style="display:flex;gap:7px;align-items:center"><input type="radio" name="rel" data-rel="1"' + (p.relation ? ' checked' : '') + (kunci ? ' disabled' : '') + '> Ada</label></div>' +
+        (p.relation ? '<input data-relnote="1" placeholder="Sebutkan hubungannya" value="' + esc(p.relation_note || '') + '" class="' + (p.relation_note ? '' : 'need') + '" style="margin-top:8px;width:100%;border:1px solid ' + (p.relation_note ? 'var(--s200)' : 'var(--amber300)') + ';background:' + (p.relation_note ? 'var(--white)' : 'var(--amber50)') + ';border-radius:6px;padding:8px 12px">' : '') +
+        (p.relation ? '<div style="margin-top:8px;font-size:12px;color:var(--amber700)">Ditandai untuk dilihat atasan sebelum vendor ini dipakai.</div>' : '') +
+        '</div></div>';
+    }
+
+    if (UI.step === 3) {
+      isi = !p.number
+        ? '<div class="card pad" style="display:flex;flex-direction:column;gap:12px">' +
+        '<div class="note sl">Nomor diambil saat diterbitkan. Sesudah itu lembarnya dicetak, ditandatangani basah di atas meterai, lalu tanggalnya dicatat di sini.</div>' +
+        '<button class="btn pri" data-terbitp="1"' + (p.vendor_id ? '' : ' disabled') + ' style="align-self:flex-start">Terbitkan &amp; siap dicetak</button></div>'
+        : '<div class="card pad"><div class="fields">' +
+        fld('Nomor', '<input readonly value="' + esc(p.number) + '">') +
+        fld('Tanggal tanda tangan', '<input type="date" data-pf="signed_date" class="' + (p.signed_date ? '' : 'need') + '" value="' + esc(p.signed_date || '') + '">', 'Dicatat setelah lembarnya ditandatangani. Tidak ada berkas yang diunggah.', !p.signed_date) +
+        fld('Berlaku sampai', '<input readonly value="' + (p.valid_until ? tglPendek(p.valid_until) : '12 bulan sejak tanggal itu') + '">') +
+        fld('Arsip', '<input readonly value="Lembar asli bermeterai — disimpan PIC">') +
+        '</div></div>';
+    }
+
+    return spanduk + pesanHTML() +
+      '<div class="ph"><div><div class="k">' + esc(({ draft: 'Draf', issued: 'Menunggu tanda tangan', active: 'Berlaku' })[p.status] || p.status) + '</div>' +
+      '<h1>' + esc(p.number || 'Pakta Integritas — draf') + '</h1>' +
+      '<p>' + esc(v ? v.name : 'Vendor belum dipilih') + ' · melekat pada vendor, berlaku 12 bulan</p></div>' +
+      '<div class="aksi"><button class="btn" data-go="list">Kembali</button>' +
+      (p.number ? '<button class="btn pri" data-cetakp="' + p.id + '">Cetak</button>' : '') + '</div></div>' +
+      rail + isi +
+      '<div class="navbar"><small>Tahap ' + (UI.step + 1) + ' dari 4</small><span class="g">' +
+      '<button class="btn" data-nav="-1"' + (UI.step === 0 ? ' disabled' : '') + '>Kembali</button>' +
+      '<button class="btn pri" data-nav="1"' + (UI.step >= 3 ? ' disabled' : '') + '>Lanjut</button></span></div>';
+  }
+
+  // ---------------------------------------------------------------- cetak
+  function kopHTML(kanan) {
+    return '<div class="kop"><div class="kop-b">' +
+      '<svg class="kop-logo" role="img" aria-label="KLA Computer"><use href="#klaLogo"></use></svg>' +
+      '<div><div class="kop-n">' + esc(KOP_NAME) + '</div><div class="kop-a">' + esc(KOP_ADDR) + '</div>' +
+      '<div class="kop-d">' + esc(KOP_DIV) + '</div></div></div>' +
+      '<div class="kop-r">' + kanan + '</div></div><div class="rule"></div>';
+  }
+
+  function gambarCetak() {
+    var d = docOf(UI.id);
+    if (!d) return '<div class="note sl">Dokumen tidak ditemukan.</div>';
+    pastikanChecks(d);
+    var v = vendorOf(d.vendor_id), cab = cabangOf(d.branch_id);
+    var pen = orangOf(d.receiver_id), sak = orangOf(d.witness_id);
+    var tb = temuanTerbuka(d);
+    var kolSerial = adaSerial(d.category), kolVol = adaVolume(d.category);
+    var pk = v ? paktaAktif(v.id) : null;
+
+    var rincian = '<table><thead><tr><th style="width:26px">No</th><th>Uraian</th>' +
+      (kolSerial ? '<th>Merk / nomor seri</th>' : '') + (kolVol ? '<th class="num">Volume</th>' : '') +
+      '<th class="num">Nilai (Rp)</th></tr></thead><tbody>' +
+      d.items.map(function (it, i) {
+        return '<tr><td>' + (i + 1) + '</td><td>' + esc(it.d) + '</td>' +
+          (kolSerial ? '<td class="mono">' + esc([it.m, it.s].filter(Boolean).join(' · ') || '—') + '</td>' : '') +
+          (kolVol ? '<td class="num">' + esc(it.v || '—') + '</td>' : '') +
+          '<td class="num">' + Number(it.a || 0).toLocaleString('id-ID') + '</td></tr>';
+      }).join('') +
+      '<tr><td colspan="9" class="num" style="color:var(--s500)">Subtotal &nbsp; ' + rp(subtotalOf(d)) + '</td></tr>' +
+      (d.ppn ? '<tr><td colspan="9" class="num" style="color:var(--s500)">PPN 11% &nbsp; ' + rp(ppnOf(d)) + '</td></tr>' : '') +
+      '<tr class="gr"><td colspan="9" class="num">Total &nbsp; ' + rp(totalOf(d)) + '</td></tr></tbody></table>';
+
+    var plnBlok = '';
+    if (adaPln(d.category) && d.pln) {
+      var p = d.pln;
+      var pasang = [['Daya tersambung', p.dayaA, p.dayaB], ['Golongan tarif', p.tarifA, p.tarifB], ['Jumlah fasa', p.fasaA, p.fasaB], ['Nomor kWh meter', p.meterA, p.meterB], ['Stand meter', p.standA, p.standB]]
+        .filter(function (r) { return r[1] || r[2]; });
+      plnBlok = '<section><div class="bh">E · Perubahan daya</div><table><thead><tr><th>Butir</th><th>Sebelum</th><th>Sesudah</th></tr></thead><tbody>' +
+        pasang.map(function (r) { return '<tr><td style="color:var(--s500)">' + esc(r[0]) + '</td><td>' + esc(r[1] || '—') + '</td><td><b>' + esc(r[2] || '—') + '</b></td></tr>'; }).join('') +
+        '</tbody></table>' + (p.cust || p.agenda ? '<div style="margin-top:8px;font-size:11px;color:var(--s500)">' + esc([p.cust ? 'ID Pelanggan ' + p.cust : '', p.agenda ? 'Agenda ' + p.agenda : ''].filter(Boolean).join(' · ')) + '</div>' : '') + '</section>';
+    }
+
+    return '<div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:800px;margin:0 auto 14px">' +
+      '<button class="btn" data-open="' + d.id + '">Kembali</button>' +
+      '<button class="btn pri" data-print="1">Cetak / Simpan PDF</button></div>' +
+      '<article class="kertas">' + kopHTML('Rangkap 2<br>Vendor · KLA') +
+      '<div class="dh"><h2>Berita Acara Serah Terima</h2>' +
+      '<p>' + esc(d.title) + (cab ? ' — ' + esc(cab.name) : '') + '</p>' +
+      '<div class="no">Nomor: ' + esc(d.number || '(belum terbit)') + '</div></div>' +
+      '<div class="doc">' +
+      '<p>' + esc(kalimatTanggal(d.doc_date)) + ', telah dilaksanakan serah terima pekerjaan sebagai berikut:</p>' +
+
+      '<section><div class="bh">A · Identitas</div><dl class="dl">' +
+      '<dt>Menyerahkan</dt><dd>' + esc(v ? v.contact_name + ' — ' + v.name : '—') + '</dd>' +
+      '<dt>NPWP / NIK penyedia</dt><dd>' + esc(v ? v.npwp : '—') + '</dd>' +
+      '<dt>Alamat penyedia</dt><dd>' + esc(v ? v.address : '—') + '</dd>' +
+      '<dt>Menerima</dt><dd>' + esc(pen ? pen.full_name + ' — KLA Computer' : '—') + '</dd>' +
+      (cab ? '<dt>Lokasi</dt><dd>' + esc(cab.name + ' · ' + cab.address) + '</dd>' : '') +
+      '</dl></section>' +
+
+      (pk ? '<section><div class="bh">B · Dasar pekerjaan</div><dl class="dl"><dt>Pakta Integritas</dt><dd>' + esc(pk.number) + '</dd></dl></section>' : '') +
+      plnBlok +
+      '<section><div class="bh">C · Rincian yang diserahkan</div>' + rincian + '</section>' +
+
+      '<section><div class="bh">D · Uji terima</div><ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px">' +
+      d.checks.map(function (c) {
+        return '<li style="display:flex;gap:8px;align-items:baseline;font-size:12.5px">' +
+          '<span style="color:' + (c.p === true ? 'var(--emer700)' : 'var(--rose700)') + '">' + (c.p === true ? '☑' : '☐') + '</span>' +
+          '<span style="flex:1">' + esc(c.l) + '</span>' +
+          (c.v ? '<span class="mono" style="color:var(--s500)">' + esc(c.v) + '</span>' : '') + '</li>';
+      }).join('') + '</ul></section>' +
+
+      (tb.length ? '<section><div class="bh">F · Temuan</div><ol style="margin:0;padding-left:20px;font-size:12.5px;display:flex;flex-direction:column;gap:4px">' +
+        tb.map(function (f) {
+          return '<li>' + esc(f.desc) + (f.due ? ' — batas ' + tglPendek(f.due) : '') + (f.who ? ' · penanggung jawab ' + esc(f.who) : '') + (f.akibat ? '. ' + esc(f.akibat) + '.' : '') + '</li>';
+        }).join('') + '</ol><div style="margin-top:8px;font-size:11.5px;color:var(--s500)">Selama catatan di atas belum dinyatakan selesai oleh pihak kedua, retensi tidak dicairkan.</div></section>' : '') +
+
+      ((d.retensi_persen || d.garansi_alat || d.garansi_jasa) ? '<section><div class="bh">G · Retensi &amp; jaminan</div><dl class="dl">' +
+        (d.retensi_persen ? '<dt>Retensi ditahan</dt><dd>' + rp(Math.round(totalOf(d) * d.retensi_persen / 100)) + ' (' + d.retensi_persen + '%)</dd>' : '') +
+        (d.retensi_hari ? '<dt>Masa pemeliharaan</dt><dd>' + d.retensi_hari + ' hari kalender</dd>' : '') +
+        (d.garansi_alat ? '<dt>Garansi perangkat</dt><dd>' + esc(d.garansi_alat) + '</dd>' : '') +
+        (d.garansi_jasa ? '<dt>Garansi pemasangan</dt><dd>' + esc(d.garansi_jasa) + '</dd>' : '') +
+        '</dl></section>' : '') +
+
+      '<section><div class="bh">I · Pembayaran</div><dl class="dl">' +
+      '<dt>Bank</dt><dd>' + esc(v ? v.bank_name : '—') + '</dd>' +
+      '<dt>Atas nama</dt><dd>' + esc(v ? v.bank_account_name : '—') + '</dd>' +
+      '<dt>Nomor rekening</dt><dd>' + esc(v ? v.bank_account_number : '—') + '</dd></dl>' +
+      '<div style="margin-top:8px;font-size:11.5px;font-style:italic;color:var(--s500)">Pembayaran ke rekening di luar nama tersebut tidak dilayani.</div></section>' +
+
+      '<p>Berita acara ini dibuat rangkap 2 (dua) bermeterai cukup, ditandatangani kedua belah pihak, dan masing-masing mempunyai kekuatan hukum yang sama.</p>' +
+
+      '<div class="ttd' + (sak ? '' : ' dua') + '">' +
+      tt('Menyerahkan', v ? v.contact_name : '', v ? v.name : '', true) +
+      tt('Menerima', pen ? pen.full_name : '', 'PIC Maintenance &amp; Expansion', false) +
+      (sak ? tt('Menyaksikan', sak.full_name, sak.role, false) : '') +
+      '</div>' +
+      '<div class="cap">Tanda tangan basah di atas meterai. Lembar asli disimpan PIC — tidak ada berkas yang diunggah ke sistem.</div>' +
+      '</div></article>';
+  }
+
+  function tt(peran, nama, jabatan, meterai) {
+    return '<div class="tt"><span class="r">' + esc(peran) + '</span>' +
+      '<span class="sp">' + (meterai ? '<span class="mtr">MATERAI<br>Rp 10.000</span>' : '<span class="qr">QR<br>verifikasi</span>') + '</span>' +
+      '<span class="w">' + esc(nama || '—') + '</span><span class="j">' + jabatan + '</span></div>';
+  }
+
+  function gambarCetakPakta() {
+    var p = paktaOf(UI.id);
+    if (!p) return '<div class="note sl">Pakta tidak ditemukan.</div>';
+    var v = vendorOf(p.vendor_id);
+    return '<div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:800px;margin:0 auto 14px">' +
+      '<button class="btn" data-pakta="' + p.id + '">Kembali</button>' +
+      '<button class="btn pri" data-print="1">Cetak / Simpan PDF</button></div>' +
+      '<article class="kertas">' + kopHTML('Ditandatangani<br>sebelum pekerjaan dimulai') +
+      '<div class="dh"><h2>Pakta Integritas</h2><p>Penyedia Barang dan Jasa</p>' +
+      '<div class="no">Nomor: ' + esc(p.number || '(belum terbit)') + '</div></div>' +
+      '<div class="doc"><p>Saya yang bertanda tangan di bawah ini:</p>' +
+      '<dl class="dl">' +
+      '<dt>Nama</dt><dd>' + esc(v ? v.contact_name : '—') + '</dd>' +
+      '<dt>Badan usaha</dt><dd>' + esc(v ? v.name : '—') + '</dd>' +
+      '<dt>Alamat</dt><dd>' + esc(v ? v.address : '—') + '</dd>' +
+      '<dt>NPWP / NIK</dt><dd>' + esc(v ? v.npwp : '—') + '</dd>' +
+      '<dt>Rekening terdaftar</dt><dd>' + esc(v ? [v.bank_name, v.bank_account_number, v.bank_account_name].filter(Boolean).join(' · ') : '—') + '</dd>' +
+      '</dl><p>dengan ini menyatakan dengan sebenar-benarnya:</p>' +
+      '<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px">' +
+      BUTIR_PAKTA.map(function (b, i) {
+        var extra = i === 3 ? '<div style="margin-top:4px">' + (p.relation
+          ? '☐ Tidak ada &nbsp;&nbsp; <b>☑ Ada, yaitu: ' + esc(p.relation_note || '____________') + '</b>'
+          : '<b>☑ Tidak ada</b> &nbsp;&nbsp; ☐ Ada, yaitu: ____________') + '</div>' : '';
+        return '<li>' + esc(b) + extra + '</li>';
+      }).join('') + '</ol>' +
+      '<p>Pernyataan ini saya buat dengan sadar, tanpa paksaan dari pihak mana pun, dan mengikat selama 12 bulan sejak tanggal ditandatangani' +
+      (p.valid_until ? ', yaitu sampai dengan ' + tglPendek(p.valid_until) : '') + '.</p>' +
+      '<div class="ttd dua">' + tt('Yang menyatakan', v ? v.contact_name : '', v ? v.name : '', true) +
+      tt('Diterima oleh', 'Kristianto', 'PIC Maintenance &amp; Expansion', false) + '</div>' +
+      '<div class="cap">Tanda tangan basah di atas meterai. Lembar asli disimpan PIC — tidak ada berkas yang diunggah ke sistem.</div>' +
+      '</div></article>';
+  }
+
+  // =========================================================================
+  function gambar() {
+    var el = document.getElementById('view');
+    var html = UI.view === 'list' ? gambarDaftar()
+      : UI.view === 'edit' ? gambarEditor()
+        : UI.view === 'pakta' ? gambarPakta()
+          : UI.view === 'cetak' ? gambarCetak()
+            : gambarCetakPakta();
+    el.innerHTML = html;
+    UI.pesan = '';
+  }
+
+  // =========================================================================
+  // Kejadian
+  // =========================================================================
+  document.getElementById('tglSide').addEventListener('click', function () {
+    var s = document.getElementById('shell');
+    s.classList.toggle('tutup');
+    s.classList.toggle('buka');
+  });
+
+  document.getElementById('btnReset').addEventListener('click', function () {
+    DB = dataAwal();
+    UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', pesan: 'Simulasi dikembalikan seperti semula.' };
+    gambarNav();
+    gambar();
+    window.scrollTo(0, 0);
+  });
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('button');
+    if (!t) return;
+    var d = UI.view === 'edit' || UI.view === 'cetak' ? docOf(UI.id) : null;
+    var p = UI.view === 'pakta' || UI.view === 'cetakp' ? paktaOf(UI.id) : null;
+
+    if (t.dataset.go === 'list') { UI.view = 'list'; UI.id = null; UI.pickerOpen = false; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.open) { UI.view = 'edit'; UI.id = t.dataset.open; UI.step = 0; UI.pickerOpen = false; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.pakta) { UI.view = 'pakta'; UI.id = t.dataset.pakta; UI.step = 0; UI.pickerQ = ''; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.cetak) { UI.view = 'cetak'; UI.id = t.dataset.cetak; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.cetakp) { UI.view = 'cetakp'; UI.id = t.dataset.cetakp; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.print) { window.print(); return; }
+    if (t.dataset.filter) { UI.filter = t.dataset.filter; gambar(); return; }
+
+    if (t.dataset.baru === 'bast') {
+      var nd = { id: uid('d'), number: '', title: 'Berita acara baru', category: 'Lainnya', branch_id: '', vendor_id: '', status: 'draft', doc_date: new Date().toISOString().slice(0, 10), signed_date: '', receiver_id: '', witness_id: '', ppn: false, items: [], checks: null, findings: [] };
+      DB.docs.unshift(nd);
+      UI.view = 'edit'; UI.id = nd.id; UI.step = 0; UI.pickerOpen = false;
+      gambar(); window.scrollTo(0, 0); return;
+    }
+    if (t.dataset.baru === 'pakta') {
+      var np = { id: uid('pk'), number: '', vendor_id: '', status: 'draft', signed_date: '', valid_until: '', relation: false, relation_note: '' };
+      DB.pacts.unshift(np);
+      UI.view = 'pakta'; UI.id = np.id; UI.step = 0; UI.pickerQ = '';
+      gambar(); window.scrollTo(0, 0); return;
+    }
+
+    if (t.dataset.step !== undefined) { UI.step = Number(t.dataset.step); gambar(); return; }
+    if (t.dataset.nav) {
+      UI.step += Number(t.dataset.nav);
+      if (UI.step < 0) UI.step = 0;
+      gambar(); return;
+    }
+
+    if (t.dataset.picker) { UI.pickerOpen = !UI.pickerOpen; UI.pickerQ = ''; gambar(); return; }
+    if (t.dataset.lengkapi) { UI.pesan = 'Di aplikasi sungguhan, tombol ini membuka Master Vendor. Di simulasi, vendor sengaja dibiarkan kurang supaya pagarnya terlihat.'; gambar(); return; }
+
+    if (t.dataset.pick && d) {
+      var vv = vendorOf(t.dataset.pick);
+      if (!vendorBolehDipilih(vv)) { UI.pesan = 'Vendor belum lengkap: ' + kurangVendor(vv).map(function (g) { return g.label; }).join(', ') + '.'; gambar(); return; }
+      d.vendor_id = vv.id;
+      UI.pickerOpen = false;
+      if (!paktaAktif(vv.id)) UI.pesan = 'Vendor ini belum punya Pakta Integritas yang berlaku.';
+      gambar(); return;
+    }
+    if (t.dataset.pickp && p) {
+      var vp = vendorOf(t.dataset.pickp);
+      if (!vendorBolehDipilih(vp)) { UI.pesan = 'Vendor belum lengkap: ' + kurangVendor(vp).map(function (g) { return g.label; }).join(', ') + '.'; gambar(); return; }
+      p.vendor_id = vp.id; UI.step = 1; gambar(); return;
+    }
+
+    if (t.dataset.add && d) { d.items.push({ d: '', m: '', s: '', v: '', a: 0 }); gambar(); return; }
+    if (t.dataset.del && d) { d.items.splice(Number(t.dataset.del), 1); gambar(); return; }
+
+    if (t.dataset.chk !== undefined && d) {
+      var i = Number(t.dataset.chk), lulus = t.dataset.val === '1';
+      pastikanChecks(d);
+      d.checks[i].p = lulus;
+      var label = d.checks[i].l;
+      var ada = d.findings.filter(function (f) { return f.label === label && !f.done; })[0];
+      if (!lulus && !ada) {
+        d.findings.push({ id: uid('f'), label: label, desc: label, who: (vendorOf(d.vendor_id) || {}).name || '', due: '', akibat: '', done: '' });
+      } else if (lulus && ada) {
+        d.findings.splice(d.findings.indexOf(ada), 1);
+      }
+      gambar(); return;
+    }
+
+    if (t.dataset.tutup !== undefined && d) {
+      d.findings[Number(t.dataset.tutup)].done = new Date().toISOString().slice(0, 10);
+      UI.pesan = 'Temuan ditandai selesai.';
+      gambar(); return;
+    }
+
+    if (t.dataset.terbit && d) {
+      var kurang = kurangTerbit(d);
+      if (kurang.length) { UI.pesan = 'Masih ada yang kurang.'; gambar(); return; }
+      var th = new Date().getFullYear();
+      DB.counter.bast[th] = (DB.counter.bast[th] || 0) + 1;
+      d.number = nomorBast(DB.counter.bast[th], new Date());
+      d.status = 'issued';
+      UI.pesan = 'Terbit dengan nomor ' + d.number + '. Isinya sekarang terkunci.';
+      gambar(); return;
+    }
+
+    if (t.dataset.terbitp && p) {
+      var th2 = new Date().getFullYear();
+      DB.counter.pakta[th2] = (DB.counter.pakta[th2] || 0) + 1;
+      p.number = nomorPakta(DB.counter.pakta[th2], new Date());
+      p.status = 'issued';
+      UI.pesan = 'Terbit dengan nomor ' + p.number + '.';
+      gambar(); return;
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    var d = docOf(UI.id), p = paktaOf(UI.id);
+
+    if (el.id === 'cari') { UI.q = el.value; var pos = el.selectionStart; gambar(); var n = document.getElementById('cari'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } return; }
+    if (el.id === 'pickerQ') { UI.pickerQ = el.value; var pos2 = el.selectionStart; gambar(); var n2 = document.getElementById('pickerQ'); if (n2) { n2.focus(); n2.setSelectionRange(pos2, pos2); } return; }
+
+    if (el.dataset.f && d) {
+      var k = el.dataset.f;
+      d[k] = el.type === 'checkbox' ? el.checked : el.value;
+      if (k === 'category') { d.checks = null; pastikanChecks(d); d.findings = []; UI.step = 0; gambar(); }
+      if (k === 'signed_date') { d.status = el.value ? 'signed' : 'issued'; }
+      return;
+    }
+    if (el.dataset.p && d) { d.pln = d.pln || {}; d.pln[el.dataset.p] = el.value; return; }
+    if (el.dataset.ppn && d) { d.ppn = el.checked; gambar(); return; }
+    if (el.dataset.i !== undefined && el.dataset.k && d) {
+      var it = d.items[Number(el.dataset.i)];
+      if (el.dataset.k === 'a') it.a = Number(String(el.value).replace(/\D/g, '')) || 0;
+      else it[el.dataset.k] = el.value;
+      return;
+    }
+    if (el.dataset.cv !== undefined && d) { pastikanChecks(d); d.checks[Number(el.dataset.cv)].v = el.value; return; }
+    if (el.dataset.fd !== undefined && el.dataset.fk && d) { d.findings[Number(el.dataset.fd)][el.dataset.fk] = el.value; return; }
+
+    if (el.dataset.pf && p) {
+      p.signed_date = el.value;
+      if (el.value) {
+        var dd = new Date(el.value); dd.setMonth(dd.getMonth() + 12);
+        p.valid_until = dd.toISOString().slice(0, 10);
+        p.status = 'active';
+      } else { p.valid_until = ''; p.status = 'issued'; }
+      gambar(); return;
+    }
+    if (el.dataset.relnote && p) { p.relation_note = el.value; return; }
+  });
+
+  document.addEventListener('change', function (e) {
+    var el = e.target, p = paktaOf(UI.id);
+    if (el.dataset.rel !== undefined && p) {
+      p.relation = el.dataset.rel === '1';
+      if (!p.relation) p.relation_note = '';
+      gambar();
+    }
+  });
+
+  // Di layar sempit sidebar mulai TERTUTUP — kalau tidak, ia menutupi isi
+  // begitu halaman dibuka di ponsel.
+  if (window.innerWidth < 900) {
+    var sh = document.getElementById('shell');
+    sh.classList.remove('buka');
+    sh.classList.add('tutup');
+  }
+
+  gambarNav();
+  gambar();
+})();
+</script>
