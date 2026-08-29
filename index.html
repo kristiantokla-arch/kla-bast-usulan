@@ -129,6 +129,16 @@
   .pill.temuan { color: var(--rose700); border-color: #FECDD3; background: var(--rose50); }
   .pill.off { color: var(--s400); border-color: var(--s200); background: var(--white); }
 
+  /* ---------- pita alur: vendor -> pakta -> berita acara ---------- */
+  .alur { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .al { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--s200); background: var(--white); color: var(--s600); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 13px; font-weight: 500; }
+  .al .an { width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; background: var(--s100); color: var(--s500); font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .al.on { border-color: var(--s950); color: var(--s950); font-weight: 600; }
+  .al.on .an { background: var(--s950); color: var(--white); }
+  .al .ab { font-size: 11px; font-weight: 600; color: var(--amber700); background: var(--amber50); border: 1px solid var(--amber200); border-radius: 999px; padding: 1px 8px; }
+  .al:hover { background: var(--s50); }
+  .ap { color: var(--s300); font-family: var(--mono); }
+
   /* ---------- tahap ---------- */
   .rail { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
   .st { display: flex; align-items: center; gap: 7px; flex: none; border: 1px solid var(--s200); background: var(--white); color: var(--s500); border-radius: 8px; padding: 6px 11px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
@@ -533,7 +543,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   }
 
   var DB = dataAwal();
-  var UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: '' };
+  var UI = { view: 'vendor', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: '' };
 
   var uid = function (p) { DB.seq += 1; return p + DB.seq; };
   var vendorOf = function (id) { return DB.vendors.filter(function (v) { return v.id === id; })[0] || null; };
@@ -602,13 +612,25 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     ['Governance', 'governance', ['User & Akses', 'Audit Trail']]
   ];
 
+  // Dua menu yang hidup di simulasi ini: Master Vendor (tempat vendor
+  // diinput) dan Berita Acara. Keduanya memang satu alur — vendor dulu,
+  // baru pakta, baru berita acara.
+  var MENU_HIDUP = { 'Master Vendor': 'vendor', 'Berita Acara (BAST)': 'list' };
+  var viewGrupAktif = function () {
+    return UI.view === 'vendor' ? 'Master Data Dashboard' : 'Workholic Dashboard';
+  };
+
   function gambarNav() {
+    var grupAktif = viewGrupAktif();
     var html = GRUP.map(function (g) {
-      var aktif = g[2].indexOf('Berita Acara (BAST)') >= 0;
-      var items = aktif ? g[2].map(function (label) {
-        var on = label === 'Berita Acara (BAST)';
-        return '<button class="nav-i' + (on ? ' on' : '') + '"' + (on ? ' data-go="list"' : ' disabled') + '>' +
-          '<span class="dot"></span><span>' + esc(label) + '</span>' + (on ? '<span class="tag">baru</span>' : '') + '</button>';
+      var punyaMenu = g[2].some(function (l) { return MENU_HIDUP[l]; });
+      var aktif = g[0] === grupAktif;
+      var items = punyaMenu ? g[2].map(function (label) {
+        var tujuan = MENU_HIDUP[label];
+        var on = tujuan && tujuan === (UI.view === 'vendor' ? 'vendor' : 'list') && aktif;
+        return '<button class="nav-i' + (on ? ' on' : '') + '"' + (tujuan ? ' data-go="' + tujuan + '"' : ' disabled') + '>' +
+          '<span class="dot"></span><span>' + esc(label) + '</span>' +
+          (label === 'Berita Acara (BAST)' ? '<span class="tag">baru</span>' : '') + '</button>';
       }).join('') : '';
       return '<div class="grp"><div class="grp-h' + (aktif ? ' on' : '') + '">' +
         '<span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + IKON[g[1]] + '"/></svg></span>' +
@@ -621,6 +643,83 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   // Tampilan
   // =========================================================================
   var spanduk = '<div class="banner no-print"><span>ℹ</span><span><b>Ini aplikasi percobaan.</b> Silakan diklik sepuasnya — tidak ada data yang disimpan. Tekan <b>Reset simulasi</b> untuk mengembalikan seperti semula.</span></div>';
+
+  // -------------------------------------------------------------------------
+  // Pita alur. Urutannya ketetapan pemilik: vendor diinput dulu, baru pakta,
+  // baru berita acara. Angka di tiap tahap menunjukkan yang masih menyumbat.
+  // -------------------------------------------------------------------------
+  function alurHTML(tahapKini) {
+    var belumLengkap = DB.vendors.filter(function (v) { return kurangVendor(v).length > 0; }).length;
+    var tanpaPakta = DB.vendors.filter(function (v) { return vendorBolehDipilih(v) && !paktaAktif(v.id); }).length;
+    var draf = DB.docs.filter(function (d) { return d.status === 'draft'; }).length;
+
+    var tahap = [
+      { k: 'vendor', n: 1, l: 'Input vendor', go: 'vendor', sisa: belumLengkap, kata: 'belum lengkap' },
+      { k: 'pakta', n: 2, l: 'Pakta Integritas', go: 'vendor', sisa: tanpaPakta, kata: 'belum berpakta' },
+      { k: 'bast', n: 3, l: 'Berita Acara', go: 'list', sisa: draf, kata: 'masih draf' }
+    ];
+
+    return '<div class="alur no-print">' + tahap.map(function (t, i) {
+      return (i ? '<span class="ap">→</span>' : '') +
+        '<button class="al' + (t.k === tahapKini ? ' on' : '') + '" data-go="' + t.go + '">' +
+        '<span class="an">' + t.n + '</span><span>' + t.l + '</span>' +
+        (t.sisa ? '<span class="ab">' + t.sisa + ' ' + t.kata + '</span>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+
+  // -------------------------------------------------------------------------
+  // Master Vendor — tahap 1 dari alur. Di sinilah vendor diinput; dari sini
+  // pula pakta dan berita acaranya dimulai, jadi urutannya terlihat.
+  // -------------------------------------------------------------------------
+  function gambarVendor() {
+    if (UI.vform) {
+      return spanduk + pesanHTML() + alurHTML('vendor') +
+        '<div class="ph"><div><div class="k">Master Data</div><h1>Master Vendor</h1>' +
+        '<p>Data rekanan. Vendor yang belum lengkap tidak bisa dipakai membuat pakta maupun berita acara.</p></div></div>' +
+        '<div class="card pad">' + formVendorHTML() + '</div>';
+    }
+
+    var q = UI.q.trim().toLowerCase();
+    var list = DB.vendors.filter(function (v) {
+      return !q || (v.name + ' ' + v.category + ' ' + v.contact_name).toLowerCase().indexOf(q) >= 0;
+    });
+
+    var baris = list.map(function (v) {
+      var kurang = kurangVendor(v);
+      var boleh = vendorBolehDipilih(v);
+      var pk = paktaAktif(v.id);
+      var lencana = v.status === 'inactive' ? '<span class="pill off">Nonaktif</span>'
+        : boleh ? '<span class="pill active">Lengkap</span>'
+          : '<span class="pill issued">' + esc(kurang[0].label) + ' kosong</span>';
+      var pakta = pk
+        ? '<span class="pill active">' + esc(pk.number) + '</span><div class="sub">s.d. ' + tglPendek(pk.valid_until) + '</div>'
+        : '<span class="pill issued">Belum ada</span>';
+
+      var aksi = [];
+      if (!boleh) aksi.push('<button class="btn xs" data-vedit="' + v.id + '">Lengkapi data</button>');
+      if (boleh && !pk) aksi.push('<button class="btn xs pri" data-newpakta="' + v.id + '">Buat Pakta</button>');
+      if (boleh && pk) aksi.push('<button class="btn xs pri" data-newbast="' + v.id + '">Buat BAST</button>');
+      if (boleh) aksi.push('<button class="btn xs" data-vedit="' + v.id + '">Ubah</button>');
+
+      return '<tr><td><span style="font-weight:500;color:var(--s950)">' + esc(v.name) + '</span>' +
+        '<div class="sub">' + esc([String(v.legal_type || '').toUpperCase(), v.category].filter(Boolean).join(' · ')) + '</div></td>' +
+        '<td>' + esc(v.contact_name || '—') + '<div class="sub">' + esc(v.phone || '—') + '</div></td>' +
+        '<td class="mono">' + esc(v.npwp || '—') + '</td>' +
+        '<td>' + lencana + '</td>' +
+        '<td>' + pakta + '</td>' +
+        '<td><div style="display:flex;gap:6px;flex-wrap:wrap">' + aksi.join('') + '</div></td></tr>';
+    }).join('');
+
+    return spanduk + pesanHTML() + alurHTML('vendor') +
+      '<div class="ph"><div><div class="k">Master Data · tahap 1 dari alur</div>' +
+      '<h1>Master Vendor</h1>' +
+      '<p>Vendor diinput sekali di sini. Yang datanya belum lengkap tidak bisa dipakai membuat pakta maupun berita acara — NPWP atau NIK wajib karena pekerjaan jasa dipotong PPh.</p></div>' +
+      '<div class="aksi"><button class="btn pri" data-vbaru="1">+ Vendor baru</button></div></div>' +
+      '<div class="bar"><input class="cari" id="cari" placeholder="Cari nama vendor, kategori, atau PIC" value="' + esc(UI.q) + '"></div>' +
+      '<div class="card"><div class="tw"><table><thead><tr>' +
+      '<th>Vendor</th><th>PIC</th><th>NPWP / NIK</th><th>Kelengkapan</th><th>Pakta Integritas</th><th></th>' +
+      '</tr></thead><tbody>' + (baris || '<tr><td colspan="6">Tidak ada vendor yang cocok.</td></tr>') + '</tbody></table></div></div>';
+  }
 
   function pesanHTML() {
     if (!UI.pesan) return '';
@@ -683,8 +782,8 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
         '<td><span class="pill ' + (p.status === 'active' ? 'active' : p.status) + '">' + esc(lbl) + '</span></td></tr>';
     }).join('');
 
-    return spanduk + pesanHTML() +
-      '<div class="ph"><div><div class="k">Maintenance &amp; Expansion</div>' +
+    return spanduk + pesanHTML() + alurHTML('bast') +
+      '<div class="ph"><div><div class="k">Maintenance &amp; Expansion · tahap 3 dari alur</div>' +
       '<h1>Berita Acara Serah Terima</h1>' +
       '<p>Semua BAST dan pakta integritas rekanan. Vendor selalu dipilih dari Master Vendor — tidak pernah diketik.</p></div>' +
       '<div class="aksi"><button class="btn" data-baru="pakta">Pakta Integritas</button>' +
@@ -840,7 +939,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     }
 
     var cab2 = cabangOf(d.branch_id);
-    return spanduk + pesanHTML() +
+    return spanduk + pesanHTML() + alurHTML('bast') +
       '<div class="ph"><div><div class="k">' + (kunci ? (d.signed_date ? 'Ditandatangani' : 'Terbit') : 'Draf') + (d.number ? '' : ' · belum bernomor') + '</div>' +
       '<h1>' + esc(d.number || d.title) + '</h1>' +
       '<p>' + esc(d.title) + ' · ' + esc(d.category) + (cab2 ? ' · ' + esc(cab2.name) : '') + '</p></div>' +
@@ -1031,8 +1130,8 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
         '</div></div>';
     }
 
-    return spanduk + pesanHTML() +
-      '<div class="ph"><div><div class="k">' + esc(({ draft: 'Draf', issued: 'Menunggu tanda tangan', active: 'Berlaku' })[p.status] || p.status) + '</div>' +
+    return spanduk + pesanHTML() + alurHTML('pakta') +
+      '<div class="ph"><div><div class="k">' + esc(({ draft: 'Draf', issued: 'Menunggu tanda tangan', active: 'Berlaku' })[p.status] || p.status) + ' · tahap 2 dari alur</div>' +
       '<h1>' + esc(p.number || 'Pakta Integritas — draf') + '</h1>' +
       '<p>' + esc(v ? v.name : 'Vendor belum dipilih') + ' · melekat pada vendor, berlaku 12 bulan</p></div>' +
       '<div class="aksi"><button class="btn" data-go="list">Kembali</button>' +
@@ -1186,12 +1285,14 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   // =========================================================================
   function gambar() {
     var el = document.getElementById('view');
-    var html = UI.view === 'list' ? gambarDaftar()
+    var html = UI.view === 'vendor' ? gambarVendor()
+      : UI.view === 'list' ? gambarDaftar()
       : UI.view === 'edit' ? gambarEditor()
         : UI.view === 'pakta' ? gambarPakta()
           : UI.view === 'cetak' ? gambarCetak()
             : gambarCetakPakta();
     el.innerHTML = html;
+    gambarNav();
     UI.pesan = '';
   }
 
@@ -1206,7 +1307,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
 
   document.getElementById('btnReset').addEventListener('click', function () {
     DB = dataAwal();
-    UI = { view: 'list', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: 'Simulasi dikembalikan seperti semula.' };
+    UI = { view: 'vendor', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: 'Simulasi dikembalikan seperti semula.' };
     gambarNav();
     gambar();
     window.scrollTo(0, 0);
@@ -1218,7 +1319,26 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     var d = UI.view === 'edit' || UI.view === 'cetak' ? docOf(UI.id) : null;
     var p = UI.view === 'pakta' || UI.view === 'cetakp' ? paktaOf(UI.id) : null;
 
-    if (t.dataset.go === 'list') { UI.view = 'list'; UI.id = null; UI.pickerOpen = false; UI.vform = null; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.go === 'list') { UI.view = 'list'; UI.id = null; UI.pickerOpen = false; UI.vform = null; UI.q = ''; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.go === 'vendor') { UI.view = 'vendor'; UI.id = null; UI.pickerOpen = false; UI.vform = null; UI.q = ''; gambar(); window.scrollTo(0, 0); return; }
+
+    // ---- lompatan antar tahap alur ----
+    if (t.dataset.newpakta) {
+      var vp2 = vendorOf(t.dataset.newpakta);
+      var np2 = { id: uid('pk'), number: '', vendor_id: vp2.id, status: 'draft', signed_date: '', valid_until: '', relation: false, relation_note: '' };
+      DB.pacts.unshift(np2);
+      UI.view = 'pakta'; UI.id = np2.id; UI.step = 1; UI.pickerQ = ''; UI.vform = null;
+      UI.pesan = 'Pakta untuk ' + vp2.name + ' dimulai. Periksa datanya, lalu terbitkan.';
+      gambar(); window.scrollTo(0, 0); return;
+    }
+    if (t.dataset.newbast) {
+      var vb2 = vendorOf(t.dataset.newbast);
+      var nd2 = { id: uid('d'), number: '', title: 'Berita acara baru', category: 'Lainnya', branch_id: '', vendor_id: vb2.id, status: 'draft', doc_date: new Date().toISOString().slice(0, 10), signed_date: '', receiver_id: '', witness_id: '', ppn: false, items: [], checks: null, findings: [] };
+      DB.docs.unshift(nd2);
+      UI.view = 'edit'; UI.id = nd2.id; UI.step = 0; UI.pickerOpen = false; UI.vform = null;
+      UI.pesan = 'Berita acara untuk ' + vb2.name + ' dimulai — vendor dan paktanya sudah terbawa.';
+      gambar(); window.scrollTo(0, 0); return;
+    }
     if (t.dataset.open) { UI.view = 'edit'; UI.id = t.dataset.open; UI.step = 0; UI.pickerOpen = false; UI.vform = null; gambar(); window.scrollTo(0, 0); return; }
     if (t.dataset.pakta) { UI.view = 'pakta'; UI.id = t.dataset.pakta; UI.step = 0; UI.pickerQ = ''; gambar(); window.scrollTo(0, 0); return; }
     if (t.dataset.cetak) { UI.view = 'cetak'; UI.id = t.dataset.cetak; gambar(); window.scrollTo(0, 0); return; }
@@ -1275,7 +1395,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
         UI.pesan = 'Data "' + f.d.name + '" dilengkapi. Sekarang bisa dipilih.';
       }
       UI.vform = null;
-      UI.pickerOpen = true;
+      if (UI.view !== 'vendor') UI.pickerOpen = true;
       gambar(); return;
     }
 

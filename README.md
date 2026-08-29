@@ -10,6 +10,23 @@ ditutup, isinya hilang. Tombol **Reset simulasi** mengembalikan seperti semula.
 
 Seluruh nama vendor, angka, dan nomor dokumen di dalamnya **fiktif**.
 
+## Alur usulannya
+
+Satu jalur berurutan, dan simulasi ini dibuka tepat di awalnya:
+
+1. **Input vendor** — Master Vendor. Vendor diinput sekali di sini. NPWP atau
+   NIK wajib untuk semua vendor, karena pekerjaan jasa dipotong PPh dan bukti
+   potong harus menyebut nomor pajak penerima. Yang belum lengkap tidak bisa
+   dipakai ke tahap berikutnya.
+2. **Pakta Integritas** — dibuat langsung dari baris vendornya. Melekat pada
+   vendor, bukan pada proyek; berlaku 12 bulan sejak ditandatangani.
+3. **Berita Acara Serah Terima** — dibuat dari baris vendor yang sudah
+   berpakta. Vendor, NPWP/NIK, rekening, dan nomor paktanya ikut terbawa;
+   tidak ada yang diketik ulang.
+
+Pita alur di bagian atas tiap layar menunjukkan sedang di tahap mana, dan
+berapa yang masih menyumbat di tiap tahap.
+
 ## Yang bisa dicoba
 
 - Membuat berita acara dari nol, lalu mengganti kategorinya — tahap pengisian
