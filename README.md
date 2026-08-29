@@ -20,9 +20,15 @@ Satu jalur berurutan, dan simulasi ini dibuka tepat di awalnya:
    dipakai ke tahap berikutnya.
 2. **Pakta Integritas** — dibuat langsung dari baris vendornya. Melekat pada
    vendor, bukan pada proyek; berlaku 12 bulan sejak ditandatangani.
-3. **Berita Acara Serah Terima** — dibuat dari baris vendor yang sudah
-   berpakta. Vendor, NPWP/NIK, rekening, dan nomor paktanya ikut terbawa;
-   tidak ada yang diketik ulang.
+   **Hanya untuk proyek besar/renovasi.** Pekerjaan ringan tidak perlu pakta.
+   Pemicunya salah satu dari: kategori pekerjaan konstruksi (Renovasi, Sipil,
+   Interior, Signage — daftar yang sama dengan yang memakai retensi), atau
+   nilai mencapai Rp 50.000.000. *Ambang nilainya masih usulan.*
+3. **Berita Acara Serah Terima** — dibuat dari baris vendor mana pun yang
+   datanya lengkap. Vendor, NPWP/NIK, rekening, dan nomor paktanya ikut
+   terbawa; tidak ada yang diketik ulang. Kalau pekerjaannya tergolong besar
+   dan vendornya belum berpakta, berita acara tidak bisa diterbitkan dan
+   alasannya disebut.
 
 Pita alur di bagian atas tiap layar menunjukkan sedang di tahap mana, dan
 berapa yang masih menyumbat di tiap tahap.
