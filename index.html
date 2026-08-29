@@ -313,20 +313,12 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   var adaGaransi = function (k) { return K_GARANSI.indexOf(k) >= 0; };
   var adaPln = function (k) { return k === 'Kelistrikan / PLN'; };
 
-  // Pakta hanya untuk proyek besar/renovasi — ketetapan pemilik 28 Agu 2026.
-  // Pemicunya: kategori yang memakai retensi (pekerjaan konstruksi), ATAU nilai
-  // mencapai ambang. Daftar kategorinya SENGAJA sama dengan yang memakai
-  // retensi, supaya tidak jadi dua daftar yang bisa bergeser sendiri.
-  // AMBANGNYA MASIH USULAN — belum ada ketetapan angka dari pemilik.
-  var AMBANG_PAKTA = 50000000;
-  var paktaDiperlukan = function (kategori, total) {
-    return adaRetensi(kategori) || Number(total || 0) >= AMBANG_PAKTA;
-  };
-  var alasanPakta = function (kategori, total) {
-    if (adaRetensi(kategori)) return 'pekerjaan ' + kategori.toLowerCase() + ' tergolong proyek besar';
-    if (Number(total || 0) >= AMBANG_PAKTA) return 'nilainya mencapai ' + rp(AMBANG_PAKTA) + ' atau lebih';
-    return '';
-  };
+  // Pakta Integritas WAJIB untuk semua pekerjaan — kelengkapan standar
+  // (ketetapan pemilik 28 Agu 2026). Sempat dibuat bersyarat pada hari yang
+  // sama lalu dicabut; aturan bersyaratnya dibuang seluruhnya, bukan
+  // dimatikan, supaya tidak ada ambang menganggur yang menyesatkan.
+  var paktaDiperlukan = function () { return true; };
+  var alasanPakta = function () { return 'pakta integritas adalah kelengkapan standar untuk semua pekerjaan'; };
 
   var LABEL_TAHAP = { dasar: 'Dasar & vendor', daya: 'Perubahan daya', rincian: 'Rincian', uji: 'Uji terima', temuan: 'Temuan', jaminan: 'Jaminan & retensi', terbit: 'Terbitkan' };
 
@@ -600,8 +592,8 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       if (!String(p.dayaB || '').trim() || !String(p.meterB || '').trim()) out.push('Daya sesudah & nomor kWh meter baru');
     }
     if (temuanTerbuka(d).some(function (f) { return !f.due; })) out.push('Batas penyelesaian temuan');
-    if (paktaDiperlukan(d.category, totalOf(d)) && !(d.vendor_id && paktaAktif(d.vendor_id))) {
-      out.push('Pakta Integritas vendor — ' + alasanPakta(d.category, totalOf(d)));
+    if (paktaDiperlukan() && !(d.vendor_id && paktaAktif(d.vendor_id))) {
+      out.push('Pakta Integritas vendor — ' + alasanPakta());
     }
     return out.filter(function (x, i, a) { return a.indexOf(x) === i; });
   }
@@ -669,11 +661,12 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   // -------------------------------------------------------------------------
   function alurHTML(tahapKini) {
     var belumLengkap = DB.vendors.filter(function (v) { return kurangVendor(v).length > 0; }).length;
+    var tanpaPakta = DB.vendors.filter(function (v) { return vendorBolehDipilih(v) && !paktaAktif(v.id); }).length;
     var draf = DB.docs.filter(function (d) { return d.status === 'draft'; }).length;
 
     var tahap = [
       { k: 'vendor', n: 1, l: 'Input vendor', go: 'vendor', sisa: belumLengkap, kata: 'belum lengkap' },
-      { k: 'pakta', n: 2, l: 'Pakta Integritas', go: 'vendor', sisa: 0, kata: '', catatan: 'proyek besar saja' },
+      { k: 'pakta', n: 2, l: 'Pakta Integritas', go: 'vendor', sisa: tanpaPakta, kata: 'belum berpakta' },
       { k: 'bast', n: 3, l: 'Berita Acara', go: 'list', sisa: draf, kata: 'masih draf' }
     ];
 
@@ -712,15 +705,14 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
           : '<span class="pill issued">' + esc(kurang[0].label) + ' kosong</span>';
       var pakta = pk
         ? '<span class="pill active">' + esc(pk.number) + '</span><div class="sub">s.d. ' + tglPendek(pk.valid_until) + '</div>'
-        : '<span class="pill off">Belum ada</span><div class="sub">perlu hanya untuk proyek besar</div>';
+        : '<span class="pill issued">Belum ada</span><div class="sub">wajib sebelum bisa buat BAST</div>';
 
       var aksi = [];
       if (!boleh) aksi.push('<button class="btn xs" data-vedit="' + v.id + '">Lengkapi data</button>');
-      // Pakta hanya perlu untuk proyek besar/renovasi, jadi "Buat BAST" TIDAK
-      // dikunci oleh ada-tidaknya pakta. Yang mengunci adalah jenis & nilai
-      // pekerjaannya, dan itu baru diketahui di dalam berita acaranya.
-      if (boleh && !pk) aksi.push('<button class="btn xs" data-newpakta="' + v.id + '">Buat Pakta</button>');
-      if (boleh) aksi.push('<button class="btn xs pri" data-newbast="' + v.id + '">Buat BAST</button>');
+      // Urutannya tegas: vendor lengkap -> pakta -> berita acara. Pakta adalah
+      // kelengkapan standar, jadi "Buat BAST" baru muncul setelah paktanya ada.
+      if (boleh && !pk) aksi.push('<button class="btn xs pri" data-newpakta="' + v.id + '">Buat Pakta</button>');
+      if (boleh && pk) aksi.push('<button class="btn xs pri" data-newbast="' + v.id + '">Buat BAST</button>');
       if (boleh) aksi.push('<button class="btn xs" data-vedit="' + v.id + '">Ubah</button>');
 
       return '<tr><td><span style="font-weight:500;color:var(--s950)">' + esc(v.name) + '</span>' +
@@ -1069,9 +1061,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       '<div style="margin-top:4px;font-weight:600">' + esc(v ? v.name : 'Belum dipilih') + '</div>' +
       (v ? '<div style="font-size:12px;color:var(--s500);margin-top:2px">' + esc([v.npwp ? 'NPWP/NIK ' + v.npwp : '', v.bank_name ? v.bank_name + ' ' + v.bank_account_number : ''].filter(Boolean).join(' · ')) + '</div>' : '') +
       (pk ? '<div style="font-size:12px;color:var(--emer700);margin-top:2px">Pakta ' + esc(pk.number) + ' · berlaku s.d. ' + tglPendek(pk.valid_until) + '</div>'
-        : v ? (paktaDiperlukan(d.category, totalOf(d))
-          ? '<div style="font-size:12px;color:var(--amber700);margin-top:2px">Belum ada Pakta Integritas — wajib, karena ' + esc(alasanPakta(d.category, totalOf(d))) + '.</div>'
-          : '<div style="font-size:12px;color:var(--s500);margin-top:2px">Belum ada Pakta Integritas — tidak diperlukan untuk pekerjaan ringan.</div>') : '') +
+        : v ? '<div style="font-size:12px;color:var(--amber700);margin-top:2px">Belum ada Pakta Integritas yang berlaku — wajib untuk semua pekerjaan.</div>' : '') +
       '</div>' +
       (kunci ? '' : '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-picker="1">' + (v ? 'Ganti vendor' : 'Pilih vendor') + '</button></div>') +
       '</div>' +
