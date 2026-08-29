@@ -1201,7 +1201,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     return '<div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:800px;margin:0 auto 14px">' +
       '<button class="btn" data-open="' + d.id + '">Kembali</button>' +
       '<button class="btn pri" data-print="1">Cetak / Simpan PDF</button></div>' +
-      '<article class="kertas">' + kopHTML('Rangkap 2<br>Vendor · KLA') +
+      '<article class="kertas">' + kopHTML('') +
       '<div class="dh"><h2>Berita Acara Serah Terima</h2>' +
       '<p>' + esc(d.title) + (cab ? ' — ' + esc(cab.name) : '') + '</p>' +
       '<div class="no">Nomor: ' + esc(d.number || '(belum terbit)') + '</div></div>' +
@@ -1246,7 +1246,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       '<dt>Nomor rekening</dt><dd>' + esc(v ? v.bank_account_number : '—') + '</dd></dl>' +
       '<div style="margin-top:8px;font-size:11.5px;font-style:italic;color:var(--s500)">Pembayaran ke rekening di luar nama tersebut tidak dilayani.</div></section>' +
 
-      '<p>Berita acara ini dibuat rangkap 2 (dua) bermeterai cukup, ditandatangani kedua belah pihak, dan masing-masing mempunyai kekuatan hukum yang sama.</p>' +
+      '<p>Berita acara ini dibuat bermeterai cukup dan ditandatangani kedua belah pihak.</p>' +
 
       '<div class="ttd' + (sak ? '' : ' dua') + '">' +
       tt('Menyerahkan', v ? v.contact_name : '', v ? v.name : '', true) +
