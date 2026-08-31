@@ -218,6 +218,8 @@
   @media (max-width: 640px) { .ttd, .ttd.dua { grid-template-columns: 1fr; gap: 26px; } }
   .tt { text-align: center; display: flex; flex-direction: column; gap: 3px; }
   .tt .r { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--s400); }
+  /* Label pada surat resmi ditulis apa adanya, tidak dibesarkan CSS. */
+  .tt .r.ttl-asli { font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--s900); }
   .tt .sp { height: 68px; margin: 5px 0 2px; border-bottom: 1px solid var(--s950); display: flex; align-items: center; justify-content: center; }
   .tt .mtr { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; color: var(--rose700); border: 1px dashed var(--rose700); padding: 8px 7px; line-height: 1.4; }
   .tt .qr { width: 48px; height: 48px; border: 1px solid var(--s300); display: grid; place-items: center; font-family: var(--mono); font-size: 8px; color: var(--s400); text-align: center; line-height: 1.25; }
@@ -303,6 +305,10 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   var KOP_NAME = 'PT. KLA Teknologi Indonesia';
   var KOP_ADDR = 'RUKO MATARAM PLAZA D8-9, JALAN MT. HARYONO NO. 428-429, JAGALAN, SEMARANG';
   var KOP_DIV = 'Divisi Maintenance & Expansion';
+
+  // Pada Surat Persetujuan Renovasi, nama penyewa ditulis KAPITAL persis seperti
+  // templat pemilik — berbeda dari KOP_NAME yang huruf campuran untuk kop KLA.
+  var PENYEWA_KAPITAL = 'PT. KLA TEKNOLOGI INDONESIA';
 
   var KATEGORI = ['Renovasi', 'Sipil', 'Interior', 'Kelistrikan / PLN', 'AC', 'CCTV & Keamanan', 'Jaringan & WiFi', 'Inventaris', 'Rak & Mebel', 'Signage', 'Logistik', 'Supplier Barang', 'Lainnya'];
   var K_VOLUME = ['Renovasi', 'Sipil', 'Interior', 'Signage', 'AC', 'Lainnya'];
@@ -1739,7 +1745,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       '<p>Selanjutnya disebut sebagai <b>Pemilik</b>.</p>' +
       '<p>Dengan ini memberikan persetujuan kepada:</p>' +
       '<div>' +
-      barisSurat('Nama / Badan Usaha', '<b>' + esc(KOP_NAME) + '</b>') +
+      barisSurat('Nama / Badan Usaha', '<b>' + esc(PENYEWA_KAPITAL) + '</b>') +
       barisSurat('Diwakili oleh', '<b>' + esc(wakil) + '</b>') +
       barisSurat('Kedudukan', 'Selaku Penyewa / Kuasa dari Penyewa') +
       barisSurat('Objek Sewa', 'Bangunan yang beralamat di ' + esc(alamat)) +
@@ -1757,13 +1763,14 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       '<p>Demikian surat persetujuan ini dibuat dengan sebenarnya, untuk dapat digunakan sebagaimana mestinya.</p>' +
       '<p style="padding-top:6px">' + esc(s.tempat || '____________') + ', ' + tglPanjang(s.tglSurat) + '</p>' +
       '<div class="ttd dua">' +
-      '<div class="tt"><span class="r">Pemilik</span>' +
+      '<div class="tt"><span class="r ttl-asli">Pemilik,</span>' +
       '<span class="sp"><span class="mtr">Materai<br>Rp10.000</span></span>' +
       pemilikList.map(function (n) { return '<span class="w">' + esc(n) + '</span>'; }).join('') +
       '</div>' +
-      '<div class="tt"><span class="r">Mengetahui / Menyetujui, Penyewa</span><span class="sp"></span>' +
+      '<div class="tt"><span class="r ttl-asli">Mengetahui / Menyetujui,</span>' +
+      '<span class="r ttl-asli">Penyewa,</span><span class="sp"></span>' +
       '<span class="w">' + esc(wakil) + '</span>' +
-      '<span class="j">Kuasa dari ' + esc(KOP_NAME) + '</span></div>' +
+      '<span class="j">Kuasa dari ' + esc(PENYEWA_KAPITAL) + '</span></div>' +
       '</div>' +
       (!s.tglTtd ? '<div class="cap no-print">Tanggal tanda tangan belum dicatat - surat ini belum berlaku.</div>' : '') +
       '</div></article>';
