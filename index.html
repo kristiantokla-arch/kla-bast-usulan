@@ -282,7 +282,10 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
             <small>PIC Maintenance · Simulasi</small>
           </div>
         </div>
-        <button class="btn" id="btnReset">Reset simulasi</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" data-peran="1" id="btnPeran">Masuk sebagai: PIC Maintenance</button>
+          <button class="btn" id="btnReset">Reset simulasi</button>
+        </div>
       </div>
     </div>
     <div class="view" id="view"></div>
@@ -320,7 +323,12 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   var paktaDiperlukan = function () { return true; };
   var alasanPakta = function () { return 'pakta integritas adalah kelengkapan standar untuk semua pekerjaan'; };
 
-  var LABEL_TAHAP = { dasar: 'Dasar & vendor', daya: 'Perubahan daya', rincian: 'Rincian', uji: 'Uji terima', temuan: 'Temuan', jaminan: 'Jaminan & retensi', terbit: 'Terbitkan' };
+  // Ketetapan pemilik 28 Agu 2026: pekerjaan terkait RENOVASI harus disetujui
+  // pemilik sebelum berita acaranya terbit. Daftarnya sama dengan yang memakai
+  // retensi — semuanya pekerjaan konstruksi.
+  var butuhPersetujuan = function (k) { return adaRetensi(k); };
+
+  var LABEL_TAHAP = { dasar: 'Dasar & vendor', daya: 'Perubahan daya', rincian: 'Rincian', uji: 'Uji terima', temuan: 'Temuan', jaminan: 'Jaminan & retensi', setuju: 'Persetujuan pemilik', terbit: 'Terbitkan' };
 
   function tahapUntuk(kategori, adaTemuan) {
     var s = ['dasar'];
@@ -328,6 +336,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     s.push('rincian', 'uji');
     if (adaTemuan) s.push('temuan');
     if (adaRetensi(kategori) || adaGaransi(kategori)) s.push('jaminan');
+    if (butuhPersetujuan(kategori)) s.push('setuju');
     s.push('terbit');
     return s;
   }
@@ -551,6 +560,9 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   }
 
   var DB = dataAwal();
+  var PERAN = { kini: 'pic' };
+  var pemilik = function () { return PERAN.kini === 'ceo'; };
+
   var UI = { view: 'vendor', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: '' };
 
   var uid = function (p) { DB.seq += 1; return p + DB.seq; };
@@ -592,6 +604,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       if (!String(p.dayaB || '').trim() || !String(p.meterB || '').trim()) out.push('Daya sesudah & nomor kWh meter baru');
     }
     if (temuanTerbuka(d).some(function (f) { return !f.due; })) out.push('Batas penyelesaian temuan');
+    if (butuhPersetujuan(d.category) && !d.disetujui) out.push('Persetujuan pemilik — pekerjaan terkait renovasi');
     if (paktaDiperlukan() && !(d.vendor_id && paktaAktif(d.vendor_id))) {
       out.push('Pakta Integritas vendor — ' + alasanPakta());
     }
@@ -630,6 +643,15 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   var viewGrupAktif = function () {
     return UI.view === 'vendor' ? 'Master Data Dashboard' : 'Workholic Dashboard';
   };
+
+  function gambarPeran() {
+    var b = document.getElementById('btnPeran');
+    if (b) b.textContent = 'Masuk sebagai: ' + (pemilik() ? 'Pemilik' : 'PIC Maintenance');
+    var n = document.querySelector('.top b');
+    if (n) n.textContent = pemilik() ? 'Kristianto' : 'Rizal Pratama';
+    var s = document.querySelector('.top small');
+    if (s) s.textContent = (pemilik() ? 'Pemilik' : 'PIC Maintenance') + ' · Simulasi';
+  }
 
   function gambarNav() {
     var grupAktif = viewGrupAktif();
@@ -932,6 +954,19 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
         (adaGaransi(d.category) ? fld('Garansi perangkat', '<input data-f="garansi_alat" placeholder="12 bulan — pabrikan" value="' + esc(d.garansi_alat || '') + '"' + (kunci ? ' readonly' : '') + '>') : '') +
         fld('Garansi pemasangan', '<input data-f="garansi_jasa" placeholder="3 bulan sejak tanggal berita acara" value="' + esc(d.garansi_jasa || '') + '"' + (kunci ? ' readonly' : '') + '>') +
         '</div></div>';
+    }
+
+    if (kini === 'setuju') {
+      isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:12px">' +
+        '<div style="font-size:14px;color:var(--s500)">Pekerjaan terkait renovasi harus disetujui pemilik sebelum berita acaranya terbit.</div>' +
+        (d.disetujui
+          ? '<div class="note em">Disetujui ' + tglPendek(d.disetujui) + ' oleh ' + esc(d.disetujui_oleh || 'Pemilik') + '.</div>' +
+            (pemilik() && !kunci ? '<button class="btn sm" data-cabut="1" style="align-self:flex-start">Cabut persetujuan</button>' : '')
+          : pemilik()
+            ? '<div class="note amb">Belum disetujui. Berita acara ini tidak bisa diterbitkan sampai Anda menyetujuinya.</div>' +
+              '<button class="btn pri" data-setujui="1" style="align-self:flex-start">Setujui sebagai pemilik</button>'
+            : '<div class="note amb">Menunggu persetujuan pemilik. Akun ini tidak bisa menyetujui — ganti peran di kanan atas untuk mencobanya.</div>') +
+        '</div>';
     }
 
     if (kini === 'terbit') {
@@ -1324,6 +1359,8 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
 
   document.getElementById('btnReset').addEventListener('click', function () {
     DB = dataAwal();
+    PERAN.kini = 'pic';
+    gambarPeran();
     UI = { view: 'vendor', id: null, step: 0, filter: 'semua', q: '', pickerOpen: false, pickerQ: '', vform: null, pesan: 'Simulasi dikembalikan seperti semula.' };
     gambarNav();
     gambar();
@@ -1465,6 +1502,26 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       gambar(); return;
     }
 
+    if (t.dataset.setujui && d) {
+      if (!pemilik()) { UI.pesan = 'Hanya pemilik yang bisa menyetujui.'; gambar(); return; }
+      d.disetujui = new Date().toISOString().slice(0, 10);
+      d.disetujui_oleh = 'Kristianto (Pemilik)';
+      UI.pesan = 'Disetujui. Berita acara sekarang bisa diterbitkan.';
+      gambar(); return;
+    }
+    if (t.dataset.cabut && d) {
+      if (!pemilik()) { UI.pesan = 'Hanya pemilik yang bisa mencabut persetujuan.'; gambar(); return; }
+      d.disetujui = ''; d.disetujui_oleh = '';
+      UI.pesan = 'Persetujuan dicabut.';
+      gambar(); return;
+    }
+    if (t.dataset.peran) {
+      PERAN.kini = PERAN.kini === 'ceo' ? 'pic' : 'ceo';
+      gambarPeran();
+      UI.pesan = 'Sekarang masuk sebagai ' + (pemilik() ? 'Pemilik' : 'PIC Maintenance') + '.';
+      gambar(); return;
+    }
+
     if (t.dataset.terbit && d) {
       var kurang = kurangTerbit(d);
       if (kurang.length) { UI.pesan = 'Masih ada yang kurang.'; gambar(); return; }
@@ -1551,6 +1608,7 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     sh.classList.add('tutup');
   }
 
+  gambarPeran();
   gambarNav();
   gambar();
 })();
