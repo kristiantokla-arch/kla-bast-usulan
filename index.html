@@ -323,10 +323,12 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   var paktaDiperlukan = function () { return true; };
   var alasanPakta = function () { return 'pakta integritas adalah kelengkapan standar untuk semua pekerjaan'; };
 
-  // Ketetapan pemilik 28 Agu 2026: pekerjaan terkait RENOVASI harus disetujui
-  // pemilik sebelum berita acaranya terbit. Daftarnya sama dengan yang memakai
-  // retensi — semuanya pekerjaan konstruksi.
-  var butuhPersetujuan = function (k) { return adaRetensi(k); };
+  // Ketetapan pemilik 28 Agu 2026: HANYA kategori Renovasi yang butuh
+  // persetujuan pemilik. Sempat diartikan luas (semua pekerjaan konstruksi)
+  // pada hari yang sama, lalu dipersempit. Sengaja tidak meminjam adaRetensi():
+  // daftar itu kebetulan sama isinya, dan meminjamnya membuat aturan ini ikut
+  // bergeser diam-diam kalau daftar retensi diubah.
+  var butuhPersetujuan = function (k) { return k === 'Renovasi'; };
 
   var LABEL_TAHAP = { dasar: 'Dasar & vendor', daya: 'Perubahan daya', rincian: 'Rincian', uji: 'Uji terima', temuan: 'Temuan', jaminan: 'Jaminan & retensi', setuju: 'Persetujuan pemilik', terbit: 'Terbitkan' };
 

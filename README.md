@@ -25,10 +25,10 @@ Satu jalur berurutan, dan simulasi ini dibuka tepat di awalnya:
    berpakta. Vendor, NPWP/NIK, rekening, dan nomor paktanya ikut terbawa;
    tidak ada yang diketik ulang.
 
-Untuk pekerjaan **terkait renovasi** ada satu tahap tambahan: **persetujuan
-pemilik**. Berita acaranya tidak bisa terbit tanpa itu. Kategori yang terkena:
-Renovasi, Sipil, Interior, Signage. Tombol **Masuk sebagai** di kanan atas
-memungkinkan mencoba dari dua sisi — PIC tidak bisa menyetujui, pemilik bisa.
+Khusus kategori **Renovasi** ada satu tahap tambahan: **persetujuan pemilik**.
+Berita acaranya tidak bisa terbit tanpa itu. Kategori lain tidak terkena.
+Tombol **Masuk sebagai** di kanan atas memungkinkan mencoba dari dua sisi —
+PIC tidak bisa menyetujui, pemilik bisa.
 
 Pita alur di bagian atas tiap layar menunjukkan sedang di tahap mana, dan
 berapa yang masih menyumbat di tiap tahap.
