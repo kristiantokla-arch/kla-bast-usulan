@@ -330,6 +330,79 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
   // bergeser diam-diam kalau daftar retensi diubah.
   var butuhPersetujuan = function (k) { return k === 'Renovasi'; };
 
+  // ---- Surat Persetujuan Renovasi (dari PEMILIK BANGUNAN) ----
+  var suratOf = function (id) { return DB.consents.filter(function (c) { return c.id === id; })[0] || null; };
+  var kuasaOf = function (id) { return DB.powers.filter(function (k) { return k.id === id; })[0] || null; };
+  var suratCabang = function (bid) { return DB.consents.filter(function (c) { return c.branch_id === bid; }); };
+
+  function suratBerlaku(s, bid, pada) {
+    if (!s) return false;
+    if (s.status !== 'active') return false;
+    if (!s.renovasi) return false;
+    if (!bid || s.branch_id !== bid) return false;
+    if (s.sewaMulai && s.sewaMulai > pada) return false;
+    if (s.sewaAkhir && s.sewaAkhir < pada) return false;
+    return true;
+  }
+
+  function alasanSurat(s, bid, pada) {
+    if (!s) return 'Cabang ini belum punya Surat Persetujuan Renovasi dari pemilik bangunan.';
+    if (s.branch_id !== bid) return 'Surat itu milik cabang lain.';
+    if (s.status !== 'active') return 'Suratnya belum berlaku — tanggal tanda tangannya belum dicatat.';
+    if (!s.renovasi) return 'Surat itu tidak mengizinkan renovasi.';
+    if (s.sewaMulai && s.sewaMulai > pada) return 'Masa sewanya belum mulai pada tanggal berita acara ini.';
+    if (s.sewaAkhir && s.sewaAkhir < pada) return 'Masa sewanya sudah berakhir pada tanggal berita acara ini.';
+    return '';
+  }
+
+  var IZIN_SURAT = [
+    ['renovasi', 'Melakukan renovasi, perubahan, perbaikan, dan/atau penambahan pada bagian interior, fasad, tata ruang, serta bagian lain yang diperlukan untuk kebutuhan usaha Penyewa;'],
+    ['signage', 'Memasang display, signage, perlengkapan usaha, instalasi pendukung, dan aset lainnya yang diperlukan untuk kegiatan usaha Penyewa;'],
+    ['daya', 'Melakukan penambahan daya listrik pada bangunan yang disewa sesuai kebutuhan usaha Penyewa, dengan biaya penambahan daya listrik menjadi tanggungan Penyewa sepenuhnya. Setelah masa sewa berakhir, Penyewa wajib mengembalikan daya listrik ke kondisi/daya semula, kecuali disepakati lain secara tertulis oleh Pemilik dan Penyewa.']
+  ];
+
+  var SURAT_BIAYA = 'Segala biaya renovasi menjadi tanggungan Penyewa. Seluruh hasil renovasi, perubahan, penambahan, display, signage, perlengkapan usaha, instalasi pendukung, dan aset yang dipasang oleh Penyewa tetap menjadi milik Penyewa. Apabila Pemilik menghendaki sebagian atau seluruhnya tetap berada di bangunan setelah masa sewa berakhir, maka hal tersebut wajib dinegosiasikan dan disepakati secara tertulis oleh Pemilik dan Penyewa.';
+  var SURAT_MENGIKAT = 'Surat persetujuan ini dibuat sebagai persetujuan tertulis dari Pemilik kepada Penyewa untuk pelaksanaan renovasi sebagaimana dimaksud di atas, dan menjadi bagian yang tidak terpisahkan dari pelaksanaan Perjanjian Sewa Menyewa atas objek sewa tersebut.';
+
+  // ---- Surat Kuasa (dari CEO/Pemilik KLA) ----
+  var LINGKUP_KUASA = [
+    ['renovasi', 'Mewakili KLA Computer dalam segala hal yang berkaitan dengan renovasi bangunan, termasuk mengajukan, menyetujui, dan menandatangani Surat Persetujuan Renovasi bersama pemilik bangunan;'],
+    ['akta', 'Mewakili KLA Computer dalam penandatanganan akta/perjanjian sewa menyewa bangunan, termasuk perpanjangan dan perubahannya;'],
+    ['proyek', 'Mewakili KLA Computer dalam pelaksanaan proyek-proyek bangunan, termasuk berhubungan dengan pemilik bangunan, penyedia jasa, instansi terkait, dan pihak lain yang diperlukan.']
+  ];
+
+  var KUASA_PENUTUP = 'Kuasa ini diberikan dengan hak substitusi terbatas dan tidak dapat dipergunakan di luar lingkup yang disebutkan di atas. Segala tindakan Penerima Kuasa dalam batas kuasa ini mengikat Pemberi Kuasa.';
+
+  // Pengingat menyala 30 hari sebelum habis (ketetapan pemilik).
+  var HARI_PENGINGAT = 30;
+
+  var LABEL_STATUS = { draft: 'Draf', issued: 'Menunggu tanda tangan', active: 'Berlaku', expired: 'Kedaluwarsa', revoked: 'Dicabut' };
+
+  function daftarPengingat() {
+    var out = [];
+    DB.powers.forEach(function (k) {
+      if (k.status !== 'active') return;
+      var sisa = hariLagi(k.akhir);
+      if (sisa === null || sisa > HARI_PENGINGAT) return;
+      out.push({ view: 'kuasa', id: k.id, label: 'Surat Kuasa ' + k.number + ' — ' + k.penerima, sisa: sisa, akhir: k.akhir });
+    });
+    DB.pacts.forEach(function (x) {
+      if (x.status !== 'active') return;
+      var sisa = hariLagi(x.valid_until);
+      if (sisa === null || sisa > HARI_PENGINGAT) return;
+      var v = vendorOf(x.vendor_id);
+      out.push({ view: 'pakta', id: x.id, label: 'Pakta Integritas ' + x.number + ' — ' + (v ? v.name : '—'), sisa: sisa, akhir: x.valid_until });
+    });
+    DB.consents.forEach(function (s) {
+      if (s.status !== 'active') return;
+      var sisa = hariLagi(s.sewaAkhir);
+      if (sisa === null || sisa > HARI_PENGINGAT) return;
+      var b = cabangOf(s.branch_id);
+      out.push({ view: 'persetujuan', id: s.id, label: 'Surat Persetujuan Renovasi ' + s.number + ' — ' + (b ? b.name : 'cabang'), sisa: sisa, akhir: s.sewaAkhir });
+    });
+    return out.sort(function (a, b) { return a.sisa - b.sisa; });
+  }
+
   var LABEL_TAHAP = { dasar: 'Dasar & vendor', daya: 'Perubahan daya', rincian: 'Rincian', uji: 'Uji terima', temuan: 'Temuan', jaminan: 'Jaminan & retensi', setuju: 'Persetujuan pemilik', terbit: 'Terbitkan' };
 
   function tahapUntuk(kategori, adaTemuan) {
@@ -556,7 +629,30 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
           checks: null, findings: []
         }
       ],
-      counter: { bast: { 2026: 34 }, pakta: { 2026: 26 } },
+      powers: [
+        { id: 'sk1', number: 'SK-EXP/2026/001', pemberi: 'KRISTIANTO', jabatanPemberi: 'Direktur / Pemilik',
+          penerima: 'MUHAMAD FAHRUL UMAM', nik: '3374xxxxxxxxxxx5',
+          jabatanPenerima: 'Perwakilan KLA Computer bidang Ekspansi',
+          renovasi: true, akta: true, proyek: true, catatan: '',
+          tahun: 2026, mulai: '2026-01-01', akhir: '2026-12-31',
+          tempat: 'Semarang', tglSurat: '2026-01-05', tglTtd: '2026-01-06', status: 'active' }
+      ],
+      consents: [
+        { id: 'sp1', number: 'SPR/2026/001', branch_id: 'b1',
+          pemilik: ['IRWAN ADI YONANTO', 'IMA DARYANTI WISANTO'],
+          alamat: 'Jalan Veteran Nomor 166, Surakarta',
+          wakil: 'MUHAMAD FAHRUL UMAM', power_id: 'sk1',
+          renovasi: true, signage: true, daya: true,
+          sewaMulai: '2026-06-05', sewaAkhir: '2030-09-05',
+          tempat: 'Surakarta', tglSurat: '2026-05-22', tglTtd: '2026-05-22', status: 'active' },
+        { id: 'sp2', number: 'SPR/2026/002', branch_id: 'b2',
+          pemilik: ['SUTRISNO'], alamat: 'Jl. Ahmad Yani No. 88, Slawi',
+          wakil: 'MUHAMAD FAHRUL UMAM', power_id: 'sk1',
+          renovasi: true, signage: true, daya: true,
+          sewaMulai: '2024-01-01', sewaAkhir: '2026-09-20',
+          tempat: 'Slawi', tglSurat: '2023-12-20', tglTtd: '2023-12-20', status: 'active' }
+      ],
+      counter: { bast: { 2026: 34 }, pakta: { 2026: 26 }, persetujuan: { 2026: 2 }, kuasa: { 2026: 1 } },
       seq: 100
     };
   }
@@ -606,7 +702,10 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       if (!String(p.dayaB || '').trim() || !String(p.meterB || '').trim()) out.push('Daya sesudah & nomor kWh meter baru');
     }
     if (temuanTerbuka(d).some(function (f) { return !f.due; })) out.push('Batas penyelesaian temuan');
-    if (butuhPersetujuan(d.category) && !d.disetujui) out.push('Persetujuan pemilik — pekerjaan terkait renovasi');
+    if (butuhPersetujuan(d.category)) {
+      var srt = suratOf(d.owner_consent_id);
+      if (!suratBerlaku(srt, d.branch_id, d.doc_date)) out.push('Surat Persetujuan Renovasi dari pemilik bangunan');
+    }
     if (paktaDiperlukan() && !(d.vendor_id && paktaAktif(d.vendor_id))) {
       out.push('Pakta Integritas vendor — ' + alasanPakta());
     }
@@ -780,19 +879,26 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     var baris = [];
     DB.docs.forEach(function (d) { baris.push({ k: 'bast', o: d }); });
     DB.pacts.forEach(function (p) { baris.push({ k: 'pakta', o: p }); });
+    DB.consents.forEach(function (s) { baris.push({ k: 'surat', o: s }); });
+    DB.powers.forEach(function (k) { baris.push({ k: 'kuasa', o: k }); });
 
     if (UI.filter === 'pakta') baris = baris.filter(function (r) { return r.k === 'pakta'; });
+    else if (UI.filter === 'surat') baris = baris.filter(function (r) { return r.k === 'surat' || r.k === 'kuasa'; });
     else if (UI.filter === 'temuan') baris = baris.filter(function (r) { return r.k === 'bast' && temuanTerbuka(r.o).length > 0; });
     else if (UI.filter !== 'semua') baris = baris.filter(function (r) { return r.k === 'bast' && r.o.status === UI.filter; });
 
     var q = UI.q.trim().toLowerCase();
     if (q) baris = baris.filter(function (r) {
       var v = vendorOf(r.o.vendor_id);
-      var t = (r.k === 'bast' ? (r.o.number || '') + ' ' + r.o.title : (r.o.number || '') + ' Pakta Integritas') + ' ' + (v ? v.name : '');
+      var judulCari = r.k === 'bast' ? r.o.title
+        : r.k === 'pakta' ? 'Pakta Integritas'
+        : r.k === 'surat' ? 'Surat Persetujuan Renovasi'
+        : 'Surat Kuasa ' + (r.o.penerima || '');
+      var t = (r.o.number || '') + ' ' + judulCari + ' ' + (v ? v.name : '');
       return t.toLowerCase().indexOf(q) >= 0;
     });
 
-    var filters = [['semua', 'Semua'], ['draft', 'Draf'], ['issued', 'Terbit'], ['signed', 'Ditandatangani'], ['temuan', 'Ada temuan'], ['pakta', 'Pakta Integritas']];
+    var filters = [['semua', 'Semua'], ['draft', 'Draf'], ['issued', 'Terbit'], ['signed', 'Ditandatangani'], ['temuan', 'Ada temuan'], ['pakta', 'Pakta Integritas'], ['surat', 'Surat kuasa & persetujuan']];
 
     var rows = baris.map(function (r) {
       var v = vendorOf(r.o.vendor_id);
@@ -809,6 +915,28 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
           '<td class="num">' + rp(totalOf(d)) + '</td>' +
           '<td><span class="pill ' + kelas + '">' + esc(teks) + '</span></td></tr>';
       }
+      if (r.k === 'surat') {
+        var s2 = r.o, cb3 = cabangOf(s2.branch_id), sisa2 = hariLagi(s2.sewaAkhir);
+        return '<tr><td><button class="lnk mono" data-bukasurat="' + s2.id + '">' + esc(s2.number || 'Belum bernomor') + '</button>' +
+          '<div class="sub">' + tglPendek(s2.tglSurat) + '</div></td>' +
+          '<td><button class="lnk" data-bukasurat="' + s2.id + '">Surat Persetujuan Renovasi</button>' +
+          '<div class="sub">' + esc(cb3 ? cb3.name : 'cabang belum dipilih') + (s2.sewaAkhir ? ' · sewa s.d. ' + tglPendek(s2.sewaAkhir) : '') + '</div></td>' +
+          '<td>' + esc(s2.pemilik.filter(Boolean).join(' & ') || '—') + '</td><td class="num">—</td>' +
+          '<td><span class="pill ' + (s2.status === 'active' ? 'active' : s2.status) + '">' + esc(LABEL_STATUS[s2.status] || s2.status) + '</span>' +
+          (s2.status === 'active' && sisa2 !== null && sisa2 <= HARI_PENGINGAT ? '<div class="sub" style="color:var(--amber700)">sisa ' + sisa2 + ' hari</div>' : '') +
+          '</td></tr>';
+      }
+      if (r.k === 'kuasa') {
+        var k3 = r.o, sisa3 = hariLagi(k3.akhir);
+        return '<tr><td><button class="lnk mono" data-bukakuasa="' + k3.id + '">' + esc(k3.number || 'Belum bernomor') + '</button>' +
+          '<div class="sub">' + tglPendek(k3.tglSurat) + '</div></td>' +
+          '<td><button class="lnk" data-bukakuasa="' + k3.id + '">Surat Kuasa</button>' +
+          '<div class="sub">' + (k3.tahun ? 'berlaku 1 Jan – 31 Des ' + k3.tahun : 'tahun belum dipilih') + '</div></td>' +
+          '<td>' + esc(k3.penerima || '—') + '</td><td class="num">—</td>' +
+          '<td><span class="pill ' + (k3.status === 'active' ? 'active' : k3.status) + '">' + esc(LABEL_STATUS[k3.status] || k3.status) + '</span>' +
+          (k3.status === 'active' && sisa3 !== null && sisa3 <= HARI_PENGINGAT ? '<div class="sub" style="color:var(--amber700)">sisa ' + sisa3 + ' hari</div>' : '') +
+          '</td></tr>';
+      }
       var p = r.o;
       var lbl = ({ draft: 'Draf', issued: 'Menunggu tanda tangan', active: 'Berlaku', expired: 'Kedaluwarsa' })[p.status] || p.status;
       var sisa = hariLagi(p.valid_until);
@@ -820,11 +948,21 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
         '<td><span class="pill ' + (p.status === 'active' ? 'active' : p.status) + '">' + esc(lbl) + '</span></td></tr>';
     }).join('');
 
-    return spanduk + pesanHTML() + alurHTML('bast') +
+    var ingat = daftarPengingat();
+    var pitaIngat = ingat.length
+      ? '<div class="note amb no-print"><b>Segera diperbarui - habis dalam ' + HARI_PENGINGAT + ' hari ke depan:</b>'
+        + '<ul style="margin:6px 0 0;padding-left:18px">' + ingat.map(function (x) {
+            return '<li><button class="lnk" data-ingat="' + x.view + ':' + x.id + '">' + esc(x.label) + '</button>'
+              + ' - sisa ' + x.sisa + ' hari, habis ' + tglPendek(x.akhir) + '</li>';
+          }).join('') + '</ul></div>'
+      : '';
+    return spanduk + pesanHTML() + pitaIngat + alurHTML('bast') +
       '<div class="ph"><div><div class="k">Maintenance &amp; Expansion · tahap 3 dari alur</div>' +
       '<h1>Berita Acara Serah Terima</h1>' +
       '<p>Semua BAST dan pakta integritas rekanan. Vendor selalu dipilih dari Master Vendor — tidak pernah diketik.</p></div>' +
-      '<div class="aksi"><button class="btn" data-baru="pakta">Pakta Integritas</button>' +
+      '<div class="aksi"><button class="btn" data-baru="kuasa">Surat Kuasa</button>' +
+      '<button class="btn" data-baru="surat">Surat Persetujuan</button>' +
+      '<button class="btn" data-baru="pakta">Pakta Integritas</button>' +
       '<button class="btn pri" data-baru="bast">Buat BAST</button></div></div>' +
 
       '<div class="stats">' +
@@ -959,15 +1097,30 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     }
 
     if (kini === 'setuju') {
+      var daftarSurat = suratCabang(d.branch_id);
+      var terpakai = suratOf(d.owner_consent_id);
       isi = '<div class="card pad" style="display:flex;flex-direction:column;gap:12px">' +
-        '<div style="font-size:14px;color:var(--s500)">Pekerjaan terkait renovasi harus disetujui pemilik sebelum berita acaranya terbit.</div>' +
-        (d.disetujui
-          ? '<div class="note em">Disetujui ' + tglPendek(d.disetujui) + ' oleh ' + esc(d.disetujui_oleh || 'Pemilik') + '.</div>' +
-            (pemilik() && !kunci ? '<button class="btn sm" data-cabut="1" style="align-self:flex-start">Cabut persetujuan</button>' : '')
-          : pemilik()
-            ? '<div class="note amb">Belum disetujui. Berita acara ini tidak bisa diterbitkan sampai Anda menyetujuinya.</div>' +
-              '<button class="btn pri" data-setujui="1" style="align-self:flex-start">Setujui sebagai pemilik</button>'
-            : '<div class="note amb">Menunggu persetujuan pemilik. Akun ini tidak bisa menyetujui — ganti peran di kanan atas untuk mencobanya.</div>') +
+        '<div style="font-size:14px;color:var(--s500)">Pekerjaan renovasi butuh <b>Surat Persetujuan Renovasi dari pemilik bangunan</b> — izin tertulis pemilik gedung kepada KLA sebagai penyewa. Bukan persetujuan internal.</div>' +
+        (!d.branch_id
+          ? '<div class="note amb">Pilih cabangnya dulu di tahap 1 — surat ini melekat pada bangunan yang disewa.</div>'
+          : daftarSurat.length === 0
+            ? '<div class="note amb">Cabang ini belum punya Surat Persetujuan Renovasi. Buat suratnya, cetak, mintakan tanda tangan pemilik bangunan di atas meterai, lalu catat tanggalnya.</div>' +
+              '<button class="btn sm" data-barusurat="' + d.branch_id + '" style="align-self:flex-start">Buat surat untuk cabang ini</button>'
+            : daftarSurat.map(function (s) {
+                var sah = suratBerlaku(s, d.branch_id, d.doc_date);
+                var dipakai = d.owner_consent_id === s.id;
+                return '<div class="vrow' + (dipakai ? ' sel' : '') + (sah ? '' : ' off') + '">' +
+                  '<div class="h"><span class="nm">' + esc(s.number || 'Belum bernomor') + '</span>' +
+                  (sah ? '<span class="pill active">Berlaku</span>' : '<span class="pill issued">Belum bisa dipakai</span>') + '</div>' +
+                  '<div class="mt">' + esc(s.pemilik.join(' & ')) + ' · ' + esc(s.alamat) + '</div>' +
+                  '<div class="mt">Sewa ' + tglPendek(s.sewaMulai) + ' s.d. ' + tglPendek(s.sewaAkhir) + '</div>' +
+                  (sah ? '' : '<div class="mt" style="color:var(--amber700)">' + esc(alasanSurat(s, d.branch_id, d.doc_date)) + '</div>') +
+                  '<div class="ac">' +
+                  (kunci ? '' : '<button class="btn xs pri" data-pakaisurat="' + s.id + '"' + (sah || dipakai ? '' : ' disabled') + '>' + (dipakai ? 'Lepas' : 'Pakai surat ini') + '</button>') +
+                  '<button class="btn xs" data-bukasurat="' + s.id + '">Buka surat</button></div></div>';
+              }).join('')) +
+        (terpakai && suratBerlaku(terpakai, d.branch_id, d.doc_date)
+          ? '<div class="note em">Surat terpasang. Berlaku sampai ' + tglPendek(terpakai.sewaAkhir) + '.</div>' : '') +
         '</div>';
     }
 
@@ -1196,6 +1349,157 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       '<button class="btn pri" data-nav="1"' + (UI.step >= 3 ? ' disabled' : '') + '>Lanjut</button></span></div>';
   }
 
+  // ---------------------------------------------------------------- surat kuasa
+  function fldHTML(label, isi, hint, warn) {
+    return '<label class="fld"><span>' + esc(label) + '</span>' + isi +
+      (hint ? '<small class="' + (warn ? 'warn' : '') + '">' + esc(hint) + '</small>' : '') + '</label>';
+  }
+
+  function gambarKuasa() {
+    var k = kuasaOf(UI.id);
+    if (!k) return '<div class="note sl">Surat kuasa tidak ditemukan.</div>';
+    var kunci = k.status !== 'draft';
+    var ro = (kunci || !pemilik()) ? ' readonly' : '';
+    var dis = (kunci || !pemilik()) ? ' disabled' : '';
+    var sisa = k.status === 'active' ? hariLagi(k.akhir) : null;
+    var inp = function (kn, nilai, ph, wajib) {
+      return '<input data-k="' + kn + '" value="' + esc(nilai || '') + '" placeholder="' + esc(ph || '') + '"' +
+        ro + (wajib && !nilai ? ' class="need"' : '') + '>';
+    };
+    var siap = k.pemberi && k.penerima && k.tahun && k.tempat && LINGKUP_KUASA.some(function (s) { return k[s[0]]; });
+
+    return spanduk + pesanHTML() +
+      '<div class="ph"><div><div class="k">' + esc(LABEL_STATUS[k.status] || k.status) + '</div>' +
+      '<h1>' + esc(k.number || 'Surat Kuasa - draf') + '</h1>' +
+      '<p>' + esc(k.penerima || 'Penerima kuasa belum diisi') + (k.tahun ? ' &middot; berlaku 1 Jan - 31 Des ' + k.tahun : '') + '</p></div>' +
+      '<div class="aksi"><button class="btn" data-go="list">Kembali</button>' +
+      '<button class="btn pri" data-cetakk="' + k.id + '">Cetak</button></div></div>' +
+
+      (sisa !== null && sisa <= HARI_PENGINGAT
+        ? '<div class="note amb"><b>Segera diperbarui.</b> Masa berlaku surat kuasa ini habis dalam ' + sisa +
+          ' hari (' + tglPendek(k.akhir) + '). Terbitkan surat kuasa tahun berikutnya sebelum tanggal itu.</div>' : '') +
+      (!pemilik() ? '<div class="note sl">Surat kuasa diterbitkan CEO/Pemilik. Ganti peran di kanan atas untuk mencobanya.</div>' : '') +
+
+      '<div class="card pad" style="display:flex;flex-direction:column;gap:14px"><div class="fields">' +
+      fldHTML('Pemberi kuasa', inp('pemberi', k.pemberi, 'Nama CEO / Pemilik', true), 'CEO / Pemilik KLA Computer') +
+      fldHTML('Jabatan pemberi kuasa', inp('jabatanPemberi', k.jabatanPemberi)) +
+      fldHTML('Penerima kuasa', inp('penerima', k.penerima, 'MUHAMAD FAHRUL UMAM', true)) +
+      fldHTML('Kedudukan penerima', inp('jabatanPenerima', k.jabatanPenerima)) +
+      fldHTML('NIK penerima kuasa', inp('nik', k.nik)) +
+      fldHTML('Tahun berlaku', '<select data-k="tahun"' + dis + '>' +
+        [2026, 2027, 2028].map(function (y) {
+          return '<option value="' + y + '"' + (Number(k.tahun) === y ? ' selected' : '') + '>' + y + '</option>';
+        }).join('') + '</select>', 'Selalu 1 Januari sampai 31 Desember.') +
+      fldHTML('Tempat surat', inp('tempat', k.tempat, 'Semarang', true)) +
+      fldHTML('Tanggal surat', '<input type="date" data-k="tglSurat" value="' + esc(k.tglSurat || '') + '"' + ro + '>') +
+      '</div>' +
+      '<div><div style="font-size:12px;font-weight:500;color:var(--s500);margin-bottom:8px">Lingkup kuasa</div>' +
+      LINGKUP_KUASA.map(function (s, i) {
+        return '<label style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--s200);' +
+          'border-radius:6px;padding:12px;margin-bottom:8px;font-size:14px">' +
+          '<input type="checkbox" data-klingkup="' + s[0] + '"' + (k[s[0]] ? ' checked' : '') + dis + '>' +
+          '<span><b>' + (i + 1) + '.</b> ' + esc(s[1]) + '</span></label>';
+      }).join('') + '</div></div>' +
+
+      '<div class="card pad">' +
+      (kunci
+        ? '<div class="fields">' +
+          fldHTML('Nomor', '<input readonly value="' + esc(k.number) + '">') +
+          fldHTML('Tanggal tanda tangan', '<input type="date" data-k="tglTtd" value="' + esc(k.tglTtd || '') + '"' +
+            (pemilik() ? '' : ' readonly') + (k.tglTtd ? '' : ' class="need"') + '>',
+            'Dicatat setelah lembarnya ditandatangani basah bermeterai.', !k.tglTtd) +
+          fldHTML('Berlaku', '<input readonly value="' + tglPendek(k.mulai) + ' - ' + tglPendek(k.akhir) + '">') +
+          fldHTML('Arsip', '<input readonly value="Lembar asli bermeterai - disimpan PIC">') +
+          '</div>'
+        : '<div style="display:flex;flex-direction:column;gap:12px">' +
+          (siap
+            ? '<div class="note em">Siap diterbitkan. Nomornya diambil saat tombol ditekan.</div>'
+            : '<div class="note amb">Lengkapi pemberi, penerima, tahun, tempat, dan minimal satu lingkup kuasa.</div>') +
+          '<button class="btn pri" data-terbitk="1"' + (pemilik() && siap ? '' : ' disabled') +
+          ' style="align-self:flex-start">Terbitkan &amp; siap dicetak</button></div>') +
+      '</div>';
+  }
+
+  // ------------------------------------------------ surat persetujuan renovasi
+  function gambarPersetujuan() {
+    var s = suratOf(UI.id);
+    if (!s) return '<div class="note sl">Surat tidak ditemukan.</div>';
+    var kunci = s.status !== 'draft';
+    var ro = kunci ? ' readonly' : '';
+    var dis = kunci ? ' disabled' : '';
+    var b = cabangOf(s.branch_id);
+    var sisa = s.status === 'active' ? hariLagi(s.sewaAkhir) : null;
+    var inp = function (kn, nilai, ph, wajib) {
+      return '<input data-s="' + kn + '" value="' + esc(nilai || '') + '" placeholder="' + esc(ph || '') + '"' +
+        ro + (wajib && !nilai ? ' class="need"' : '') + '>';
+    };
+    var siap = s.branch_id && s.pemilik[0] && s.alamat && s.wakil && s.sewaMulai && s.sewaAkhir && s.tempat;
+
+    return spanduk + pesanHTML() +
+      '<div class="ph"><div><div class="k">' + esc(LABEL_STATUS[s.status] || s.status) + '</div>' +
+      '<h1>' + esc(s.number || 'Surat Persetujuan Renovasi - draf') + '</h1>' +
+      '<p>Dari pemilik bangunan kepada KLA sebagai penyewa' +
+      (b ? ' &middot; ' + esc(b.name) : ' &middot; cabang belum dipilih') + '</p></div>' +
+      '<div class="aksi"><button class="btn" data-go="list">Kembali</button>' +
+      '<button class="btn pri" data-cetaks="' + s.id + '">Cetak</button></div></div>' +
+
+      (sisa !== null && sisa <= HARI_PENGINGAT
+        ? '<div class="note amb"><b>Masa sewa segera berakhir.</b> Habis dalam ' + sisa + ' hari (' +
+          tglPendek(s.sewaAkhir) + '). Sesudah itu surat ini tidak bisa dipakai menerbitkan berita acara renovasi.</div>' : '') +
+
+      '<div class="note sl">Surat ini <b>bukan persetujuan internal KLA</b>. Ia ditandatangani pemilik bangunan ' +
+      'di atas meterai, dan berlaku sepanjang masa sewa.</div>' +
+
+      '<div class="card pad" style="display:flex;flex-direction:column;gap:14px"><div class="fields">' +
+      fldHTML('Cabang (objek sewa)', '<select data-s="branch_id"' + dis + '><option value="">- pilih cabang -</option>' +
+        CABANG.map(function (c) {
+          return '<option value="' + c.id + '"' + (c.id === s.branch_id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+        }).join('') + '</select>', 'Alamat & masa sewa ditarik dari Master Cabang.') +
+      fldHTML('Alamat objek sewa', inp('alamat', s.alamat, '', true)) +
+      fldHTML('Pemilik bangunan 1', '<input data-p1="1" value="' + esc(s.pemilik[0] || '') + '"' + ro +
+        (s.pemilik[0] ? '' : ' class="need"') + '>') +
+      fldHTML('Pemilik bangunan 2', '<input data-p2="1" value="' + esc(s.pemilik[1] || '') + '"' + ro +
+        ' placeholder="Opsional">', 'Bisa lebih dari satu - suami-istri atau ahli waris.') +
+      fldHTML('Diwakili oleh (pihak KLA)', inp('wakil', s.wakil, 'MUHAMAD FAHRUL UMAM', true)) +
+      fldHTML('Dasar kuasa', '<select data-s="power_id"' + dis + '><option value="">- tanpa surat kuasa -</option>' +
+        DB.powers.map(function (k) {
+          return '<option value="' + k.id + '"' + (k.id === s.power_id ? ' selected' : '') + '>' +
+            esc(k.number + ' - ' + k.penerima) + '</option>';
+        }).join('') + '</select>', 'Surat kuasa yang jadi dasar kewenangan wakil KLA.') +
+      fldHTML('Masa sewa mulai', '<input type="date" data-s="sewaMulai" value="' + esc(s.sewaMulai || '') + '"' + ro + '>') +
+      fldHTML('Masa sewa berakhir', '<input type="date" data-s="sewaAkhir" value="' + esc(s.sewaAkhir || '') + '"' + ro + '>',
+        'Termasuk masa grace period.') +
+      fldHTML('Tempat surat', inp('tempat', s.tempat, 'Surakarta', true)) +
+      fldHTML('Tanggal surat', '<input type="date" data-s="tglSurat" value="' + esc(s.tglSurat || '') + '"' + ro + '>') +
+      '</div>' +
+      '<div><div style="font-size:12px;font-weight:500;color:var(--s500);margin-bottom:8px">Izin yang diberikan pemilik</div>' +
+      IZIN_SURAT.map(function (z, i) {
+        return '<label style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--s200);' +
+          'border-radius:6px;padding:12px;margin-bottom:8px;font-size:14px">' +
+          '<input type="checkbox" data-sizin="' + z[0] + '"' + (s[z[0]] ? ' checked' : '') + dis + '>' +
+          '<span><b>' + (i + 1) + '.</b> ' + esc(z[1]) + '</span></label>';
+      }).join('') +
+      (!s.renovasi ? '<div class="note amb">Butir 1 tidak dicentang. Surat ini tidak bisa dipakai menerbitkan berita acara renovasi.</div>' : '') +
+      '</div></div>' +
+
+      '<div class="card pad">' +
+      (kunci
+        ? '<div class="fields">' +
+          fldHTML('Nomor', '<input readonly value="' + esc(s.number) + '">') +
+          fldHTML('Tanggal tanda tangan pemilik', '<input type="date" data-s="tglTtd" value="' + esc(s.tglTtd || '') + '"' +
+            (s.tglTtd ? '' : ' class="need"') + '>', 'Dicatat setelah lembarnya ditandatangani basah bermeterai.', !s.tglTtd) +
+          fldHTML('Berlaku sampai', '<input readonly value="' + (s.sewaAkhir ? tglPendek(s.sewaAkhir) : 'mengikuti masa sewa') + '">') +
+          fldHTML('Arsip', '<input readonly value="Lembar asli bermeterai - disimpan PIC">') +
+          '</div>'
+        : '<div style="display:flex;flex-direction:column;gap:12px">' +
+          (siap
+            ? '<div class="note em">Siap dicetak dan dimintakan tanda tangan pemilik bangunan.</div>'
+            : '<div class="note amb">Lengkapi cabang, pemilik, alamat, wakil KLA, masa sewa, dan tempat surat.</div>') +
+          '<button class="btn pri" data-terbits="1"' + (siap ? '' : ' disabled') +
+          ' style="align-self:flex-start">Terbitkan &amp; siap dicetak</button></div>') +
+      '</div>';
+  }
+
   // ---------------------------------------------------------------- cetak
   function kopHTML(kanan) {
     return '<div class="kop"><div class="kop-b">' +
@@ -1336,10 +1640,143 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       '</div></article>';
   }
 
+  function barisSurat(k, v) {
+    return '<div style="display:grid;grid-template-columns:180px 10px 1fr;font-size:13px;line-height:1.7">' +
+      '<span>' + esc(k) + '</span><span>:</span><span>' + v + '</span></div>';
+  }
+
+  var BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  function tglPanjang(iso) {
+    if (!iso) return '____________';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.getDate() + ' ' + BULAN_PANJANG[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  function tglAngka(iso) {
+    if (!iso) return '__-__-____';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return pad2(d.getDate()) + '-' + pad2(d.getMonth() + 1) + '-' + d.getFullYear();
+  }
+
+  // Surat Kuasa datang DARI KLA, jadi berkop KLA.
+  function gambarCetakKuasa() {
+    var k = kuasaOf(UI.id);
+    if (!k) return '<div class="note sl">Surat kuasa tidak ditemukan.</div>';
+    var lingkup = LINGKUP_KUASA.filter(function (s) { return k[s[0]]; });
+    var th = k.tahun || '____';
+
+    return '<div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:800px;margin:0 auto 14px">' +
+      '<button class="btn" data-bukakuasa="' + k.id + '">Kembali</button>' +
+      '<button class="btn pri" data-print="1">Cetak / Simpan PDF</button></div>' +
+      '<article class="kertas">' + kopHTML('') +
+      '<div class="dh"><h2>Surat Kuasa</h2>' +
+      '<div class="no">Nomor: ' + esc(k.number || '(belum terbit)') + '</div></div>' +
+      '<div class="doc">' +
+      '<p>Yang bertanda tangan di bawah ini:</p>' +
+      '<div>' +
+      barisSurat('Nama', '<b>' + esc(k.pemberi || '____________') + '</b>') +
+      barisSurat('Jabatan', esc(k.jabatanPemberi || 'Direktur / Pemilik')) +
+      barisSurat('Perusahaan', esc(KOP_NAME)) +
+      '</div>' +
+      '<p>Selanjutnya disebut sebagai <b>Pemberi Kuasa</b>.</p>' +
+      '<p>Dengan ini memberikan kuasa kepada:</p>' +
+      '<div>' +
+      barisSurat('Nama', '<b>' + esc(k.penerima || '____________') + '</b>') +
+      (k.nik ? barisSurat('NIK', esc(k.nik)) : '') +
+      barisSurat('Kedudukan', esc(k.jabatanPenerima || 'Perwakilan KLA Computer bidang Ekspansi')) +
+      '</div>' +
+      '<p>Selanjutnya disebut sebagai <b>Penerima Kuasa</b>.</p>' +
+      '<p style="text-align:center;font-weight:700">--------------------- KHUSUS ---------------------</p>' +
+      '<p>Untuk dan atas nama Pemberi Kuasa, melakukan hal-hal sebagai berikut:</p>' +
+      (lingkup.length
+        ? '<ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px">' +
+          lingkup.map(function (s) { return '<li>' + esc(s[1]) + '</li>'; }).join('') + '</ol>'
+        : '<p style="font-style:italic;color:var(--s500)">(Belum ada lingkup kuasa yang dicentang.)</p>') +
+      '<p>' + esc(KUASA_PENUTUP) + '</p>' +
+      '<p>Surat kuasa ini berlaku untuk tahun ' + th + ', terhitung sejak tanggal 1 Januari ' + th +
+      ' sampai dengan tanggal 31 Desember ' + th + ', dan diperbarui setiap tahun.</p>' +
+      '<p>Demikian surat kuasa ini dibuat untuk dipergunakan sebagaimana mestinya.</p>' +
+      '<p style="padding-top:6px">' + esc(k.tempat || '____________') + ', ' + tglPanjang(k.tglSurat) + '</p>' +
+      '<div class="ttd dua">' +
+      '<div class="tt"><span class="r">Pemberi Kuasa</span>' +
+      '<span class="sp"><span class="mtr">Materai<br>Rp10.000</span></span>' +
+      '<span class="w">' + esc(k.pemberi || '____________') + '</span>' +
+      '<span class="j">' + esc(k.jabatanPemberi || 'Direktur / Pemilik') + '</span></div>' +
+      '<div class="tt"><span class="r">Penerima Kuasa</span><span class="sp"></span>' +
+      '<span class="w">' + esc(k.penerima || '____________') + '</span>' +
+      '<span class="j">' + esc(k.jabatanPenerima || '') + '</span></div>' +
+      '</div>' +
+      (!k.tglTtd ? '<div class="cap no-print">Tanggal tanda tangan belum dicatat - surat kuasa ini belum berlaku.</div>' : '') +
+      '</div></article>';
+  }
+
+  // Surat Persetujuan datang DARI PEMILIK BANGUNAN, jadi TANPA kop KLA.
+  function gambarCetakSurat() {
+    var s = suratOf(UI.id);
+    if (!s) return '<div class="note sl">Surat tidak ditemukan.</div>';
+    var izin = IZIN_SURAT.filter(function (z) { return s[z[0]]; });
+    var alamat = s.alamat || '____________';
+    var wakil = s.wakil || '____________';
+    var pemilikList = s.pemilik.filter(Boolean);
+    if (!pemilikList.length) pemilikList = ['____________'];
+
+    return '<div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:800px;margin:0 auto 14px">' +
+      '<button class="btn" data-bukasurat="' + s.id + '">Kembali</button>' +
+      '<button class="btn pri" data-print="1">Cetak / Simpan PDF</button></div>' +
+      '<article class="kertas">' +
+      '<div class="dh"><h2>Surat Persetujuan Renovasi Bangunan</h2>' +
+      (s.number ? '<div class="no">Nomor: ' + esc(s.number) + '</div>' : '') + '</div>' +
+      '<div class="doc">' +
+      '<p>Yang bertanda tangan di bawah ini:</p>' +
+      '<div>' +
+      pemilikList.map(function (n) { return barisSurat('Nama', '<b>' + esc(n) + '</b>'); }).join('') +
+      barisSurat('Kedudukan', 'Selaku Pemilik Bangunan') +
+      barisSurat('Alamat Objek Sewa', esc(alamat)) +
+      '</div>' +
+      '<p>Selanjutnya disebut sebagai <b>Pemilik</b>.</p>' +
+      '<p>Dengan ini memberikan persetujuan kepada:</p>' +
+      '<div>' +
+      barisSurat('Nama / Badan Usaha', '<b>' + esc(KOP_NAME) + '</b>') +
+      barisSurat('Diwakili oleh', '<b>' + esc(wakil) + '</b>') +
+      barisSurat('Kedudukan', 'Selaku Penyewa / Kuasa dari Penyewa') +
+      barisSurat('Objek Sewa', 'Bangunan yang beralamat di ' + esc(alamat)) +
+      '</div>' +
+      '<p>Renovasi dilakukan untuk kebutuhan usaha retail komputer, elektronik, aksesoris komputer, dan usaha lain yang berkaitan, dengan tetap mematuhi ketentuan hukum yang berlaku.</p>' +
+      '<p>Dalam pelaksanaan renovasi tersebut, Pemilik memberikan persetujuan kepada Penyewa untuk melakukan hal-hal sebagai berikut:</p>' +
+      (izin.length
+        ? '<ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px">' +
+          izin.map(function (z) { return '<li>' + esc(z[1]) + '</li>'; }).join('') + '</ol>'
+        : '<p style="font-style:italic;color:var(--s500)">(Belum ada butir izin yang dicentang.)</p>') +
+      '<p>' + esc(SURAT_BIAYA) + '</p>' +
+      '<p>' + esc(SURAT_MENGIKAT) + '</p>' +
+      '<p>Surat persetujuan ini berlaku selama jangka waktu sewa menyewa sebagaimana tercantum dalam akta/perjanjian sewa menyewa antara Pemilik dan Penyewa, yaitu sejak tanggal ' +
+      tglAngka(s.sewaMulai) + ' sampai dengan tanggal ' + tglAngka(s.sewaAkhir) + ', termasuk masa grace period.</p>' +
+      '<p>Demikian surat persetujuan ini dibuat dengan sebenarnya, untuk dapat digunakan sebagaimana mestinya.</p>' +
+      '<p style="padding-top:6px">' + esc(s.tempat || '____________') + ', ' + tglPanjang(s.tglSurat) + '</p>' +
+      '<div class="ttd dua">' +
+      '<div class="tt"><span class="r">Pemilik</span>' +
+      '<span class="sp"><span class="mtr">Materai<br>Rp10.000</span></span>' +
+      pemilikList.map(function (n) { return '<span class="w">' + esc(n) + '</span>'; }).join('') +
+      '</div>' +
+      '<div class="tt"><span class="r">Mengetahui / Menyetujui, Penyewa</span><span class="sp"></span>' +
+      '<span class="w">' + esc(wakil) + '</span>' +
+      '<span class="j">Kuasa dari ' + esc(KOP_NAME) + '</span></div>' +
+      '</div>' +
+      (!s.tglTtd ? '<div class="cap no-print">Tanggal tanda tangan belum dicatat - surat ini belum berlaku.</div>' : '') +
+      '</div></article>';
+  }
+
   // =========================================================================
   function gambar() {
     var el = document.getElementById('view');
-    var html = UI.view === 'vendor' ? gambarVendor()
+    var html = UI.view === 'kuasa' ? gambarKuasa()
+      : UI.view === 'persetujuan' ? gambarPersetujuan()
+      : UI.view === 'cetakk' ? gambarCetakKuasa()
+      : UI.view === 'cetaks' ? gambarCetakSurat()
+      : UI.view === 'vendor' ? gambarVendor()
       : UI.view === 'list' ? gambarDaftar()
       : UI.view === 'edit' ? gambarEditor()
         : UI.view === 'pakta' ? gambarPakta()
@@ -1401,6 +1838,62 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     if (t.dataset.cetakp) { UI.view = 'cetakp'; UI.id = t.dataset.cetakp; gambar(); window.scrollTo(0, 0); return; }
     if (t.dataset.print) { window.print(); return; }
     if (t.dataset.filter) { UI.filter = t.dataset.filter; gambar(); return; }
+
+    if (t.dataset.baru === 'kuasa') {
+      if (!pemilik()) { UI.pesan = 'Surat kuasa hanya bisa dibuat CEO/Pemilik. Ganti peran di kanan atas.'; gambar(); return; }
+      var nk = { id: uid('sk'), number: '', pemberi: '', jabatanPemberi: 'Direktur / Pemilik', penerima: 'MUHAMAD FAHRUL UMAM',
+        nik: '', jabatanPenerima: 'Perwakilan KLA Computer bidang Ekspansi', renovasi: true, akta: true, proyek: true,
+        tahun: new Date().getFullYear(), mulai: '', akhir: '', tempat: '', tglSurat: '', tglTtd: '', status: 'draft' };
+      DB.powers.unshift(nk);
+      UI.view = 'kuasa'; UI.id = nk.id; gambar(); window.scrollTo(0, 0); return;
+    }
+    if (t.dataset.baru === 'surat' || t.dataset.barusurat) {
+      var bid = t.dataset.barusurat || '';
+      var cb = cabangOf(bid);
+      var ns = { id: uid('sp'), number: '', branch_id: bid, pemilik: [], alamat: cb ? cb.address : '',
+        wakil: 'MUHAMAD FAHRUL UMAM', power_id: (DB.powers[0] || {}).id || '',
+        renovasi: true, signage: true, daya: true, sewaMulai: '', sewaAkhir: '',
+        tempat: '', tglSurat: '', tglTtd: '', status: 'draft' };
+      DB.consents.unshift(ns);
+      UI.view = 'persetujuan'; UI.id = ns.id; gambar(); window.scrollTo(0, 0); return;
+    }
+    if (t.dataset.ingat) {
+      var bagian = t.dataset.ingat.split(':');
+      UI.view = bagian[0]; UI.id = bagian[1]; UI.step = 0;
+      gambar(); window.scrollTo(0, 0); return;
+    }
+    if (t.dataset.cetakk) { UI.view = 'cetakk'; UI.id = t.dataset.cetakk; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.cetaks) { UI.view = 'cetaks'; UI.id = t.dataset.cetaks; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.bukakuasa) { UI.view = 'kuasa'; UI.id = t.dataset.bukakuasa; gambar(); window.scrollTo(0, 0); return; }
+    if (t.dataset.bukasurat) { UI.view = 'persetujuan'; UI.id = t.dataset.bukasurat; gambar(); window.scrollTo(0, 0); return; }
+
+    if (t.dataset.pakaisurat && d) {
+      d.owner_consent_id = d.owner_consent_id === t.dataset.pakaisurat ? '' : t.dataset.pakaisurat;
+      gambar(); return;
+    }
+
+    if (t.dataset.terbitk) {
+      var k2 = kuasaOf(UI.id);
+      if (!k2 || !pemilik()) { UI.pesan = 'Hanya CEO/Pemilik yang bisa menerbitkan surat kuasa.'; gambar(); return; }
+      var th3 = Number(k2.tahun) || new Date().getFullYear();
+      DB.counter.kuasa[th3] = (DB.counter.kuasa[th3] || 0) + 1;
+      k2.number = 'SK-EXP/' + th3 + '/' + pad3(DB.counter.kuasa[th3]);
+      k2.mulai = th3 + '-01-01';
+      k2.akhir = th3 + '-12-31';
+      k2.status = 'issued';
+      UI.pesan = 'Terbit dengan nomor ' + k2.number + '.';
+      gambar(); return;
+    }
+    if (t.dataset.terbits) {
+      var s2 = suratOf(UI.id);
+      if (!s2) return;
+      var th4 = new Date(s2.tglSurat || Date.now()).getFullYear();
+      DB.counter.persetujuan[th4] = (DB.counter.persetujuan[th4] || 0) + 1;
+      s2.number = 'SPR/' + th4 + '/' + pad3(DB.counter.persetujuan[th4]);
+      s2.status = 'issued';
+      UI.pesan = 'Terbit dengan nomor ' + s2.number + '. Cetak lalu mintakan tanda tangan pemilik bangunan.';
+      gambar(); return;
+    }
 
     if (t.dataset.baru === 'bast') {
       var nd = { id: uid('d'), number: '', title: 'Berita acara baru', category: 'Lainnya', branch_id: '', vendor_id: '', status: 'draft', doc_date: new Date().toISOString().slice(0, 10), signed_date: '', receiver_id: '', witness_id: '', ppn: false, items: [], checks: null, findings: [] };
@@ -1504,19 +1997,6 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       gambar(); return;
     }
 
-    if (t.dataset.setujui && d) {
-      if (!pemilik()) { UI.pesan = 'Hanya pemilik yang bisa menyetujui.'; gambar(); return; }
-      d.disetujui = new Date().toISOString().slice(0, 10);
-      d.disetujui_oleh = 'Kristianto (Pemilik)';
-      UI.pesan = 'Disetujui. Berita acara sekarang bisa diterbitkan.';
-      gambar(); return;
-    }
-    if (t.dataset.cabut && d) {
-      if (!pemilik()) { UI.pesan = 'Hanya pemilik yang bisa mencabut persetujuan.'; gambar(); return; }
-      d.disetujui = ''; d.disetujui_oleh = '';
-      UI.pesan = 'Persetujuan dicabut.';
-      gambar(); return;
-    }
     if (t.dataset.peran) {
       PERAN.kini = PERAN.kini === 'ceo' ? 'pic' : 'ceo';
       gambarPeran();
@@ -1545,6 +2025,22 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
     }
   });
 
+  // Menggambar ulang TANPA kehilangan fokus & posisi kursor. Diperlukan karena
+  // tombol Terbitkan menyala/mati mengikuti isian: kalau tidak digambar ulang,
+  // ia tetap kelabu walau isiannya sudah lengkap.
+  function gambarJagaFokus(atribut, nilaiAtribut) {
+    var el = document.querySelector('[' + atribut + '="' + nilaiAtribut + '"]');
+    var pos = null;
+    try { pos = el && el.selectionStart; } catch (e) { pos = null; }
+    gambar();
+    var lagi = document.querySelector('[' + atribut + '="' + nilaiAtribut + '"]');
+    if (!lagi) return;
+    lagi.focus();
+    if (pos !== null && lagi.setSelectionRange) {
+      try { lagi.setSelectionRange(pos, pos); } catch (e) { /* type date tidak mendukung */ }
+    }
+  }
+
   document.addEventListener('input', function (e) {
     var el = e.target;
     var d = docOf(UI.id), p = paktaOf(UI.id);
@@ -1562,6 +2058,50 @@ M 722 525 L 727 526 L 783 515 L 786 512 L 793 491 L 799 479 L 799 475 L 801 474 
       else if (lagi) { lagi.focus(); }
       return;
     }
+
+    var kk = kuasaOf(UI.id), ss = suratOf(UI.id);
+
+    if (el.dataset.k && kk) {
+      if (el.dataset.k === 'tahun') {
+        kk.tahun = Number(el.value);
+        kk.mulai = kk.tahun + '-01-01';
+        kk.akhir = kk.tahun + '-12-31';
+      } else if (el.dataset.k === 'tglTtd') {
+        kk.tglTtd = el.value;
+        kk.status = el.value ? 'active' : 'issued';
+        gambar();
+        return;
+      } else {
+        kk[el.dataset.k] = el.value;
+        gambarJagaFokus('data-k', el.dataset.k);
+        return;
+      }
+      gambar();
+      return;
+    }
+    if (el.dataset.klingkup && kk) { kk[el.dataset.klingkup] = el.checked; gambar(); return; }
+
+    if (el.dataset.s && ss) {
+      if (el.dataset.s === 'branch_id') {
+        ss.branch_id = el.value;
+        var cb2 = cabangOf(el.value);
+        if (cb2) ss.alamat = cb2.address || ss.alamat;
+        gambar();
+        return;
+      }
+      if (el.dataset.s === 'tglTtd') {
+        ss.tglTtd = el.value;
+        ss.status = el.value ? 'active' : 'issued';
+        gambar();
+        return;
+      }
+      ss[el.dataset.s] = el.value;
+      gambarJagaFokus('data-s', el.dataset.s);
+      return;
+    }
+    if (el.dataset.sizin && ss) { ss[el.dataset.sizin] = el.checked; gambar(); return; }
+    if (el.dataset.p1 && ss) { ss.pemilik[0] = el.value; gambarJagaFokus('data-p1', '1'); return; }
+    if (el.dataset.p2 && ss) { ss.pemilik[1] = el.value; return; }
 
     if (el.dataset.f && d) {
       var k = el.dataset.f;

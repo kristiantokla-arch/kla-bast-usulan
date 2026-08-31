@@ -14,24 +14,35 @@ Seluruh nama vendor, angka, dan nomor dokumen di dalamnya **fiktif**.
 
 Satu jalur berurutan, dan simulasi ini dibuka tepat di awalnya:
 
-1. **Input vendor** — Master Vendor. Vendor diinput sekali di sini. NPWP atau
-   NIK wajib untuk semua vendor, karena pekerjaan jasa dipotong PPh dan bukti
-   potong harus menyebut nomor pajak penerima. Yang belum lengkap tidak bisa
-   dipakai ke tahap berikutnya.
-2. **Pakta Integritas** — dibuat langsung dari baris vendornya. Melekat pada
-   vendor, bukan pada proyek; berlaku 12 bulan sejak ditandatangani.
-   **Wajib untuk semua pekerjaan**, ringan maupun besar — kelengkapan standar.
+1. **Input vendor** — Master Vendor. NPWP atau NIK wajib untuk semua vendor,
+   karena pekerjaan jasa dipotong PPh dan bukti potong harus menyebut nomor
+   pajak penerima. Yang belum lengkap tidak bisa dipakai ke tahap berikutnya.
+2. **Pakta Integritas** — dibuat dari baris vendornya. Melekat pada vendor,
+   berlaku 12 bulan. Wajib untuk semua pekerjaan, ringan maupun besar.
 3. **Berita Acara Serah Terima** — baru bisa dimulai setelah vendornya
-   berpakta. Vendor, NPWP/NIK, rekening, dan nomor paktanya ikut terbawa;
-   tidak ada yang diketik ulang.
+   berpakta. Vendor, NPWP/NIK, rekening, dan nomor paktanya ikut terbawa.
 
-Khusus kategori **Renovasi** ada satu tahap tambahan: **persetujuan pemilik**.
-Berita acaranya tidak bisa terbit tanpa itu. Kategori lain tidak terkena.
-Tombol **Masuk sebagai** di kanan atas memungkinkan mencoba dari dua sisi —
-PIC tidak bisa menyetujui, pemilik bisa.
+## Dua surat pendukung
 
-Pita alur di bagian atas tiap layar menunjukkan sedang di tahap mana, dan
-berapa yang masih menyumbat di tiap tahap.
+**Surat Kuasa** (`SK-EXP/TAHUN/NNN`) — dari CEO/Pemilik kepada wakil KLA
+bidang ekspansi: mewakili renovasi, menandatangani akta sewa, dan mewakili
+proyek bangunan. Berlaku **satu tahun kalender penuh — 1 Januari sampai 31
+Desember**, bukan 12 bulan sejak ditandatangani. Hanya CEO/Pemilik yang bisa
+menerbitkannya; ganti peran lewat tombol di kanan atas untuk mencobanya.
+Berkop KLA.
+
+**Surat Persetujuan Renovasi** (`SPR/TAHUN/NNN`) — izin tertulis dari **pemilik
+bangunan** kepada KLA sebagai penyewa. Ini bukan persetujuan internal: ia
+ditandatangani pemilik gedung di atas meterai dan berlaku sepanjang masa sewa.
+Melekat pada cabang. Pekerjaan berkategori **Renovasi** tidak bisa diterbitkan
+berita acaranya tanpa surat ini. Tanpa kop KLA — suratnya datang dari pemilik
+bangunan.
+
+## Pengingat
+
+Menyala **30 hari sebelum habis**, di halaman daftar dan di halaman suratnya,
+untuk tiga dokumen bermasa berlaku sekaligus: surat kuasa, pakta integritas,
+dan surat persetujuan renovasi. Yang paling dekat habis muncul paling atas.
 
 ## Yang bisa dicoba
 
